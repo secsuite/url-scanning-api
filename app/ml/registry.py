@@ -25,14 +25,26 @@ _script_detector: ScriptDetector | None = None
 
 
 def get_phishing_detector() -> PhishingDetector | None:
+    global _phishing_detector
+    if _phishing_detector is None:
+        logger.info("Lazy-loading phishing detector on first use.")
+        _load_phishing()
     return _phishing_detector
 
 
 def get_malware_detector() -> BinaryMalwareDetector | None:
+    global _malware_detector
+    if _malware_detector is None:
+        logger.info("Lazy-loading binary malware detector on first use.")
+        _load_malware()
     return _malware_detector
 
 
 def get_script_detector() -> ScriptDetector | None:
+    global _script_detector
+    if _script_detector is None:
+        logger.info("Lazy-loading script detector on first use.")
+        _load_script()
     return _script_detector
 
 

@@ -3,6 +3,7 @@ FastAPI application entry-point.
 """
 
 import asyncio
+import logging
 import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -19,6 +20,8 @@ from app.dependencies import close_http_client
 from app.ml.registry import preload_all
 from app.routers import scan
 
+logger = logging.getLogger(__name__)
+
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 
 
@@ -26,7 +29,10 @@ from app.routers import scan
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
     settings.ensure_directories()
-    await preload_all()
+    if settings.PRELOAD_MODELS_ON_STARTUP:
+        await preload_all()
+    else:
+        logger.info("Skipping startup model preload (PRELOAD_MODELS_ON_STARTUP=false).")
     yield
     await close_http_client()
 

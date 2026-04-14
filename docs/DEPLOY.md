@@ -134,6 +134,11 @@ gcloud iam service-accounts add-iam-policy-binding "$GHA_SA_EMAIL" \
   --project="$PROJECT_ID" \
   --role="roles/iam.workloadIdentityUser" \
   --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${REPO_SLUG}"
+
+gcloud iam service-accounts add-iam-policy-binding "$GHA_SA_EMAIL" \
+  --project="$PROJECT_ID" \
+  --role="roles/iam.serviceAccountTokenCreator" \
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${REPO_SLUG}"
 ```
 
 ### 6. Grant Cloud Build and runtime service accounts required permissions
@@ -221,37 +226,43 @@ Recommended GitHub environments:
 
 ## Pipeline Usage
 
+First-time order (required):
+
+1. Upload/prepare models in GCS.
+2. Run `Model Release` (section A)
+3. Run `Deploy` (section B).
+
 ### A. Model pipeline
 
-Run workflow: `Model Release` (manual `workflow_dispatch`)
+Workflow: `Model Release`
 
-Inputs:
+Run Model Release:
 
-- `source_uri`: source GCS URI containing model tree
-- `model_version`: optional custom version
-- `update_latest`: true to refresh `latest.txt`
-
-First run example:
-
-- `source_uri`: `gs://<MODEL_BUCKET>/<MODEL_ARTIFACTS_PREFIX>/bootstrap`
-- `model_version`: `v2026-04-14-bootstrap`
-- `update_latest`: `true`
-
-Published output:
-
-- `gs://<MODEL_BUCKET>/<MODEL_ARTIFACTS_PREFIX>/<model_version>`
-- `manifest.json`
-- `latest.txt` pointer (when enabled)
+```bash
+set -a; source .env; set +a
+gh workflow run "Model Release" \
+  -f source_uri="gs://${MODEL_BUCKET}/${MODEL_ARTIFACTS_PREFIX}/bootstrap" \
+  -f update_latest=true
+```
 
 ### B. Code pipeline
 
 Workflow: `Deploy`
 
-Behavior:
+Trigger and run modes:
 
-- Push to `master`: runs quality gates and deploys `$STAGING_SERVICE_NAME`.
-- Manual run with `environment=production`: runs quality gates and deploys `$SERVICE_NAME`.
-- If `model_artifacts_uri` is empty, deploy workflow reads model URI from `gs://<MODEL_BUCKET>/<MODEL_ARTIFACTS_PREFIX>/latest.txt`.
+- Push to `master` triggers `Deploy` automatically (quality gates + staging deploy).
+- Manual staging run:
+
+```bash
+gh workflow run "Deploy" -f environment=staging
+```
+
+- Manual production run:
+
+```bash
+gh workflow run "Deploy" -f environment=production
+```
 
 ## Post-Deploy
 
