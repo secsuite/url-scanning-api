@@ -30,7 +30,7 @@ steps:
           exit 1
         fi
         if [ -z "${_MODEL_ARTIFACTS_URI}" ]; then
-          echo "ERROR: _MODEL_ARTIFACTS_URI substitution is required
+          echo "ERROR: _MODEL_ARTIFACTS_URI substitution is required"
           exit 1
         fi
         echo "Downloading model artifacts from ${_MODEL_ARTIFACTS_URI}..."

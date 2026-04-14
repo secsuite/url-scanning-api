@@ -10,6 +10,25 @@ This project uses two GitHub Actions pipelines:
 - `.github/workflows/models-release.yml`
 - `.github/workflows/deploy.yml`
 
+## Required CLI Tools
+
+Install GitHub CLI (`gh`):
+
+- macOS (Homebrew): `brew install gh`
+- Linux / Windows and other methods: [GitHub CLI install docs](https://github.com/cli/cli#installation)
+
+Install Google Cloud CLI (`gcloud`):
+
+- macOS (Homebrew): `brew install --cask google-cloud-sdk`
+- Linux / Windows and other methods: [Google Cloud CLI install docs](https://cloud.google.com/sdk/docs/install)
+
+Verify both are available:
+
+```bash
+gh --version
+gcloud --version
+```
+
 ## Single Source Of Truth For Names
 
 For local scripts, naming comes from `.env`:
@@ -108,7 +127,8 @@ gcloud iam workload-identity-pools providers create-oidc "$PROVIDER_ID" \
   --workload-identity-pool="$POOL_ID" \
   --display-name="GitHub provider" \
   --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository"
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository == '${REPO_SLUG}'"
 
 gcloud iam service-accounts add-iam-policy-binding "$GHA_SA_EMAIL" \
   --project="$PROJECT_ID" \
@@ -172,6 +192,26 @@ GHA_SA_NAME="${GHA_SA_NAME:-gha-${GCP_PROJECT_ID}}"
 
 gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --body "projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/providers/github-provider"
 gh variable set GCP_SERVICE_ACCOUNT --body "${GHA_SA_NAME}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+```
+
+Set all required GitHub repository variables from `.env`:
+
+```bash
+set -a; source .env; set +a
+PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')"
+GHA_SA_NAME="${GHA_SA_NAME:-gha-${GCP_PROJECT_ID}}"
+GHA_SA_EMAIL="${GHA_SA_NAME}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+
+gh variable set GCP_PROJECT_ID --body "$GCP_PROJECT_ID"
+gh variable set GCP_REGION --body "$GCP_REGION"
+gh variable set MODEL_BUCKET --body "$MODEL_BUCKET"
+gh variable set MODEL_ARTIFACTS_PREFIX --body "$MODEL_ARTIFACTS_PREFIX"
+gh variable set SERVICE_NAME --body "$SERVICE_NAME"
+gh variable set STAGING_SERVICE_NAME --body "$STAGING_SERVICE_NAME"
+gh variable set AR_REPO --body "$AR_REPO"
+gh variable set IMAGE_NAME --body "$IMAGE_NAME"
+gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --body "projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/providers/github-provider"
+gh variable set GCP_SERVICE_ACCOUNT --body "${GHA_SA_EMAIL}"
 ```
 
 Recommended GitHub environments:
