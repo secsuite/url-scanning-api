@@ -14,7 +14,15 @@ from typing import Any
 from urllib.parse import urlparse
 
 import dns.resolver
+import tldextract
 import whois
+
+_tld_extract = tldextract.TLDExtract(suffix_list_urls=())
+
+_resolver = dns.resolver.Resolver(configure=False)
+_resolver.nameservers = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
+_resolver.timeout = 3.0
+_resolver.lifetime = 6.0
 
 from app.config import settings
 from app.schemas import (
@@ -95,40 +103,63 @@ def _check_whois(domain: str) -> WHOISInfo:
 
 # ── DNS ───────────────────────────────────────────────────────────────────────
 
+def _candidate_domains(domain: str) -> list[str]:
+    """Return the domain plus its registered (eTLD+1) form for email-auth lookups."""
+    candidates = [domain]
+    extracted = _tld_extract(domain)
+    if extracted.domain and extracted.suffix:
+        registered = f"{extracted.domain}.{extracted.suffix}"
+        if registered != domain:
+            candidates.append(registered)
+    return candidates
+
+
+def _join_txt(rdata) -> str:
+    """TXT records can be split into multiple quoted strings — join them."""
+    return "".join(s.decode("utf-8", "replace") for s in rdata.strings)
+
+
 def _check_dns(domain: str) -> DNSInfo:
     info = DNSInfo()
 
-    # MX records
-    try:
-        mx_answers = dns.resolver.resolve(domain, "MX")
-        info.has_mx = True
-        info.mx_records = [str(r.exchange).rstrip(".") for r in mx_answers]
-    except Exception:
-        pass
+    for candidate in _candidate_domains(domain):
+        # MX records
+        if not info.has_mx:
+            try:
+                mx_answers = _resolver.resolve(candidate, "MX")
+                info.has_mx = True
+                info.mx_records = [str(r.exchange).rstrip(".") for r in mx_answers]
+            except Exception:
+                pass
 
-    # SPF (TXT records)
-    try:
-        txt_answers = dns.resolver.resolve(domain, "TXT")
-        for rdata in txt_answers:
-            txt = rdata.to_text().strip('"')
-            if txt.startswith("v=spf1"):
-                info.has_spf = True
-                info.spf_record = txt
-                break
-    except Exception:
-        pass
+        # SPF (TXT records)
+        if not info.has_spf:
+            try:
+                txt_answers = _resolver.resolve(candidate, "TXT")
+                for rdata in txt_answers:
+                    txt = _join_txt(rdata)
+                    if txt.startswith("v=spf1"):
+                        info.has_spf = True
+                        info.spf_record = txt
+                        break
+            except Exception:
+                pass
 
-    # DMARC
-    try:
-        dmarc_answers = dns.resolver.resolve(f"_dmarc.{domain}", "TXT")
-        for rdata in dmarc_answers:
-            txt = rdata.to_text().strip('"')
-            if txt.startswith("v=DMARC1"):
-                info.has_dmarc = True
-                info.dmarc_record = txt
-                break
-    except Exception:
-        pass
+        # DMARC
+        if not info.has_dmarc:
+            try:
+                dmarc_answers = _resolver.resolve(f"_dmarc.{candidate}", "TXT")
+                for rdata in dmarc_answers:
+                    txt = _join_txt(rdata)
+                    if txt.startswith("v=DMARC1"):
+                        info.has_dmarc = True
+                        info.dmarc_record = txt
+                        break
+            except Exception:
+                pass
+
+        if info.has_mx and info.has_spf and info.has_dmarc:
+            break
 
     return info
 
