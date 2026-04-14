@@ -1,0 +1,185 @@
+name: Deploy
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: production
+        type: choice
+        options:
+          - staging
+          - production
+      model_artifacts_uri:
+        description: "Optional explicit model URI. When empty, latest pointer is used."
+        required: false
+        type: string
+      max_instances:
+        description: "Cloud Run max instances"
+        required: false
+        default: "3"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install -e ".[dev]"
+
+      - name: Run quality gates
+        run: |
+          . .venv/bin/activate
+          make quality
+
+  deploy-staging:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    needs: quality
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+    environment: staging
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      MODEL_BUCKET: ${{ vars.MODEL_BUCKET }}
+      MODEL_ARTIFACTS_PREFIX: ${{ vars.MODEL_ARTIFACTS_PREFIX }}
+      STAGING_SERVICE_NAME: ${{ vars.STAGING_SERVICE_NAME }}
+      AR_REPO: ${{ vars.AR_REPO }}
+      IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Resolve model URI
+        id: model
+        run: |
+          set -euo pipefail
+          INPUT_URI="${{ github.event.inputs.model_artifacts_uri }}"
+          if [ -n "${INPUT_URI}" ]; then
+            MODEL_URI="${INPUT_URI}"
+          else
+            MODEL_URI="$(gcloud storage cat "gs://${MODEL_BUCKET}/${MODEL_ARTIFACTS_PREFIX}/latest.txt")"
+          fi
+          echo "model_uri=${MODEL_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy staging service
+        run: |
+          set -euo pipefail
+          STAGING_SERVICE="${STAGING_SERVICE_NAME:-${GCP_PROJECT_ID}-staging}"
+          AR_REPO_VAL="${AR_REPO:-${GCP_PROJECT_ID}}"
+          IMAGE_NAME_VAL="${IMAGE_NAME:-${GCP_PROJECT_ID}}"
+          PROJECT_ID="${GCP_PROJECT_ID}" \
+          REGION="${GCP_REGION:-europe-west1}" \
+          SERVICE="${STAGING_SERVICE}" \
+          AR_REPO="${AR_REPO_VAL}" \
+          IMAGE_NAME="${IMAGE_NAME_VAL}" \
+          MODEL_ARTIFACTS_URI="${{ steps.model.outputs.model_uri }}" \
+          MAX_INSTANCES="${{ github.event.inputs.max_instances || '3' }}" \
+          ./deploy/cloudbuild-deploy.sh
+
+      - name: Smoke test staging
+        run: |
+          set -euo pipefail
+          STAGING_SERVICE="${STAGING_SERVICE_NAME:-${GCP_PROJECT_ID}-staging}"
+          URL="$(gcloud run services describe "${STAGING_SERVICE}" --region="${GCP_REGION:-europe-west1}" --format='value(status.url)')"
+          curl -fsS "${URL}/health" >/dev/null
+          echo "Staging health check passed: ${URL}/health"
+
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: quality
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
+    environment: production
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      MODEL_BUCKET: ${{ vars.MODEL_BUCKET }}
+      MODEL_ARTIFACTS_PREFIX: ${{ vars.MODEL_ARTIFACTS_PREFIX }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      AR_REPO: ${{ vars.AR_REPO }}
+      IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Resolve model URI
+        id: model
+        run: |
+          set -euo pipefail
+          INPUT_URI="${{ github.event.inputs.model_artifacts_uri }}"
+          if [ -n "${INPUT_URI}" ]; then
+            MODEL_URI="${INPUT_URI}"
+          else
+            MODEL_URI="$(gcloud storage cat "gs://${MODEL_BUCKET}/${MODEL_ARTIFACTS_PREFIX}/latest.txt")"
+          fi
+          echo "model_uri=${MODEL_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy production service
+        run: |
+          set -euo pipefail
+          PROD_SERVICE="${SERVICE_NAME:-${GCP_PROJECT_ID}}"
+          AR_REPO_VAL="${AR_REPO:-${GCP_PROJECT_ID}}"
+          IMAGE_NAME_VAL="${IMAGE_NAME:-${GCP_PROJECT_ID}}"
+          PROJECT_ID="${GCP_PROJECT_ID}" \
+          REGION="${GCP_REGION:-europe-west1}" \
+          SERVICE="${PROD_SERVICE}" \
+          AR_REPO="${AR_REPO_VAL}" \
+          IMAGE_NAME="${IMAGE_NAME_VAL}" \
+          MODEL_ARTIFACTS_URI="${{ steps.model.outputs.model_uri }}" \
+          MAX_INSTANCES="${{ github.event.inputs.max_instances || '3' }}" \
+          ./deploy/cloudbuild-deploy.sh
+
+      - name: Smoke test production
+        run: |
+          set -euo pipefail
+          PROD_SERVICE="${SERVICE_NAME:-${GCP_PROJECT_ID}}"
+          URL="$(gcloud run services describe "${PROD_SERVICE}" --region="${GCP_REGION:-europe-west1}" --format='value(status.url)')"
+          curl -fsS "${URL}/health" >/dev/null
+          echo "Production health check passed: ${URL}/health"

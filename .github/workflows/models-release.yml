@@ -1,0 +1,113 @@
+name: Model Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_uri:
+        description: "Source GCS URI containing model folder tree to publish"
+        required: true
+        type: string
+      model_version:
+        description: "Optional model version (e.g. v2026-04-14-001). Auto-generated when empty."
+        required: false
+        type: string
+      update_latest:
+        description: "Update latest pointer after publish"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: model-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish Models To GCS
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      MODEL_BUCKET: ${{ vars.MODEL_BUCKET }}
+      MODEL_ARTIFACTS_PREFIX: ${{ vars.MODEL_ARTIFACTS_PREFIX }}
+    steps:
+      - name: Validate required repository variables
+        run: |
+          set -euo pipefail
+          test -n "${GCP_PROJECT_ID}" || (echo "Missing repo variable GCP_PROJECT_ID" && exit 1)
+          test -n "${MODEL_BUCKET}" || (echo "Missing repo variable MODEL_BUCKET" && exit 1)
+          test -n "${MODEL_ARTIFACTS_PREFIX}" || (echo "Missing repo variable MODEL_ARTIFACTS_PREFIX" && exit 1)
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Resolve model version and paths
+        id: meta
+        run: |
+          set -euo pipefail
+          VERSION="${{ github.event.inputs.model_version }}"
+          if [ -z "${VERSION}" ]; then
+            VERSION="v$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}"
+          fi
+          DEST_ROOT="gs://${MODEL_BUCKET}/${MODEL_ARTIFACTS_PREFIX}"
+          DEST_URI="${DEST_ROOT}/${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "dest_root=${DEST_ROOT}" >> "$GITHUB_OUTPUT"
+          echo "dest_uri=${DEST_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish models to versioned URI
+        run: |
+          set -euo pipefail
+          SRC="${{ github.event.inputs.source_uri }}"
+          DEST="${{ steps.meta.outputs.dest_uri }}"
+          gcloud storage rsync -r "${SRC}" "${DEST}"
+
+      - name: Validate required model artifacts
+        run: |
+          set -euo pipefail
+          DEST="${{ steps.meta.outputs.dest_uri }}"
+          gcloud storage ls "${DEST}/malicious_binary_detection/PE_detector.lgb" >/dev/null
+          gcloud storage ls "${DEST}/malicious_script_detection/saved_model/model.safetensors" >/dev/null
+          gcloud storage ls "${DEST}/phishing_detection/checkpoints/frcnn_best.pth" >/dev/null
+          gcloud storage ls "${DEST}/phishing_detection/checkpoints/siamese_best.pth" >/dev/null
+
+      - name: Write model manifest
+        run: |
+          set -euo pipefail
+          DEST="${{ steps.meta.outputs.dest_uri }}"
+          VERSION="${{ steps.meta.outputs.version }}"
+          cat > /tmp/manifest.json <<JSON
+          {
+            "model_version": "${VERSION}",
+            "source_uri": "${{ github.event.inputs.source_uri }}",
+            "published_uri": "${DEST}",
+            "published_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "git_sha": "${GITHUB_SHA}"
+          }
+          JSON
+          gcloud storage cp /tmp/manifest.json "${DEST}/manifest.json"
+
+      - name: Update latest pointer
+        if: ${{ inputs.update_latest }}
+        run: |
+          set -euo pipefail
+          DEST_ROOT="${{ steps.meta.outputs.dest_root }}"
+          DEST_URI="${{ steps.meta.outputs.dest_uri }}"
+          printf '%s' "${DEST_URI}" > /tmp/latest.txt
+          gcloud storage cp /tmp/latest.txt "${DEST_ROOT}/latest.txt"
+
+      - name: Summary
+        run: |
+          echo "Model version: ${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Published URI: ${{ steps.meta.outputs.dest_uri }}" >> "$GITHUB_STEP_SUMMARY"
