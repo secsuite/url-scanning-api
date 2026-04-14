@@ -1,0 +1,52 @@
+.env
+.env.local
+.env.*.local
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Tooling cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Runtime artifacts
+downloads/
+screenshots/
+
+# ML artifact binaries (keep out of Git; fetch from GCS in CI/CD)
+app/ml/models/**/checkpoints/*.pth
+app/ml/models/**/saved_model/model.safetensors
+app/ml/models/**/saved_model/tokenizer.json
+app/ml/models/**/saved_model/tokenizer_config.json
+app/ml/models/**/saved_model/config.json
+app/ml/models/**/saved_model/training_args.bin
+app/ml/models/**/PE_detector.lgb
+app/ml/models/**/benign.exe
+app/ml/models/**/*.pt
+app/ml/models/**/*.pth
+app/ml/models/**/*.safetensors
+app/ml/models/**/*.ckpt
+app/ml/models/**/*.bin
+
+# IDE / OS files
+.DS_Store
+.idea/
+.vscode/

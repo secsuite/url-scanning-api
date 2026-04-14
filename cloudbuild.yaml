@@ -1,0 +1,90 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: "europe-west1"
+  _SERVICE: "url-scanning-api"
+  _AR_REPO: "url-scanning-api"
+  _IMAGE_NAME: "url-scanning-api"
+  _MODEL_ARTIFACTS_URI: ""
+  _MAX_INSTANCES: "3"
+
+steps:
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    id: "Fetch model artifacts from GCS"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        set -euo pipefail
+        if [ -z "${_MODEL_ARTIFACTS_URI}" ]; then
+          echo "ERROR: _MODEL_ARTIFACTS_URI substitution is required (example: gs://my-bucket/url-scanning-api-models)"
+          exit 1
+        fi
+        echo "Downloading model artifacts from ${_MODEL_ARTIFACTS_URI}..."
+        mkdir -p app/ml/models
+        gsutil -m rsync -r "${_MODEL_ARTIFACTS_URI}" app/ml/models
+        echo "Validating required model files..."
+        test -f app/ml/models/malicious_binary_detection/PE_detector.lgb
+        test -f app/ml/models/malicious_script_detection/saved_model/model.safetensors
+        test -f app/ml/models/phishing_detection/checkpoints/frcnn_best.pth
+        test -f app/ml/models/phishing_detection/checkpoints/siamese_best.pth
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Build image"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:$BUILD_ID"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:latest"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Push image (build id)"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:$BUILD_ID"
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: "Push image (latest)"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:latest"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    id: "Deploy to Cloud Run"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE}"
+      - "--region"
+      - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:$BUILD_ID"
+      - "--port"
+      - "8080"
+      - "--cpu"
+      - "4"
+      - "--memory"
+      - "16Gi"
+      - "--concurrency"
+      - "1"
+      - "--timeout"
+      - "900"
+      - "--min-instances"
+      - "0"
+      - "--max-instances"
+      - "${_MAX_INSTANCES}"
+      - "--set-env-vars"
+      - "SCREENSHOT_DIR=/tmp/screenshots,DOWNLOAD_DIR=/tmp/downloads,APP_HOST=0.0.0.0,APP_PORT=8080,HTTP_TIMEOUT=30.0,SCREENSHOT_TIMEOUT=8000,VIRUSTOTAL_POLL_TIMEOUT=6.0"
+      - "--set-secrets"
+      - "GOOGLE_SAFE_BROWSING_API_KEY=GOOGLE_SAFE_BROWSING_API_KEY:latest,VIRUSTOTAL_API_KEY=VIRUSTOTAL_API_KEY:latest"
+
+images:
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:$BUILD_ID"
+  - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:latest"
