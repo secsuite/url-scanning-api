@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(cat requirements.txt)",
-      "Bash(cat pyproject.toml)",
-      "Bash(python -c ':*)"
-    ]
-  }
-}
