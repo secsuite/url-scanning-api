@@ -163,6 +163,17 @@ Create these repository variables:
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`: `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider`
 - `GCP_SERVICE_ACCOUNT`: `<GHA_SA_NAME>@<GCP_PROJECT_ID>.iam.gserviceaccount.com`
 
+Set the two auth-critical variables from CLI using `.env` values:
+
+```bash
+set -a; source .env; set +a
+PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')"
+GHA_SA_NAME="${GHA_SA_NAME:-gha-${GCP_PROJECT_ID}}"
+
+gh variable set GCP_WORKLOAD_IDENTITY_PROVIDER --body "projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/providers/github-provider"
+gh variable set GCP_SERVICE_ACCOUNT --body "${GHA_SA_NAME}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+```
+
 Recommended GitHub environments:
 
 - `staging`
@@ -212,7 +223,7 @@ gcloud run services describe "$STAGING_SERVICE_NAME" --region="$GCP_REGION" --fo
 gcloud run services describe "$SERVICE_NAME" --region="$GCP_REGION" --format='value(status.url)'
 ```
 
-Make public (optional):
+Make public:
 
 ```bash
 set -a; source .env; set +a
