@@ -31,6 +31,7 @@ load_dotenv(_env_path, override=False)  # override=False: real env vars win over
 
 # ── Markers ───────────────────────────────────────────────────────────────────
 
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
@@ -43,6 +44,7 @@ def pytest_configure(config):
 
 
 # ── Session-scoped live client ────────────────────────────────────────────────
+
 
 @pytest.fixture(scope="session")
 def live_client():
@@ -58,15 +60,15 @@ def live_client():
     """
     try:
         from app.main import app
+
         with TestClient(app, raise_server_exceptions=True) as client:
             yield client
     except Exception as exc:
-        pytest.skip(
-            f"App failed to start (missing model files or config?): {exc}"
-        )
+        pytest.skip(f"App failed to start (missing model files or config?): {exc}")
 
 
 # ── Per-test key guards ───────────────────────────────────────────────────────
+
 
 @pytest.fixture(autouse=True)
 def _skip_if_missing_safe_browsing_key(request):

@@ -3,6 +3,7 @@ Siamese Network for logo matching.
 Uses twin CNN branches (shared weights) with a ResNet-18 backbone
 to produce embeddings, then computes cosine similarity.
 """
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -30,9 +31,7 @@ class SiameseNetwork(nn.Module):
             embedding_dim = config.SIAMESE_EMBEDDING_DIM
 
         # Shared backbone: ResNet-18 without the final FC layer
-        backbone = models.resnet18(
-            weights="DEFAULT" if pretrained else None
-        )
+        backbone = models.resnet18(weights="DEFAULT" if pretrained else None)
         # Remove the final FC layer — we'll add our own embedding head
         self.features = nn.Sequential(*list(backbone.children())[:-1])
         backbone_out_dim = 512  # ResNet-18 outputs 512-dim after avgpool

@@ -65,6 +65,36 @@ Analyse a URL for malicious indicators.
 
 Liveness check.
 
+## Quality Gates
+
+Install development tooling:
+
+```bash
+pip install -e ".[dev]"
+pre-commit install
+```
+
+Run all quality gates with one command:
+
+```bash
+make quality
+```
+
+Manual equivalent:
+
+```bash
+black --check app tests
+ruff check app tests
+mypy app tests
+pytest -q --maxfail=1
+```
+
+Run all configured pre-commit hooks on the full codebase:
+
+```bash
+pre-commit run --all-files
+```
+
 ## Project Structure
 
 ```
@@ -107,4 +137,3 @@ The API fully integrates with the trained machine learning models stored within 
 | **Phishing Visuals** | Faster R-CNN + Siamese NN wrapped via the full detection pipeline | `app/ml/models/phishing_detection/checkpoints/` |
 
 The intermediate hooks inside the `app/ml/` folder dynamically extend pathing to your `inference` / `pipeline` files, automatically preserving your engineered thresholding, tokenization boundaries, and evaluation logic.
-

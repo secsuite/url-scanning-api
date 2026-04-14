@@ -3,9 +3,9 @@ options:
 
 substitutions:
   _REGION: "europe-west1"
-  _SERVICE: "url-scanning-api"
-  _AR_REPO: "url-scanning-api"
-  _IMAGE_NAME: "url-scanning-api"
+  _SERVICE: ""
+  _AR_REPO: ""
+  _IMAGE_NAME: ""
   _MODEL_ARTIFACTS_URI: ""
   _MAX_INSTANCES: "3"
 
@@ -17,8 +17,20 @@ steps:
       - "-c"
       - |
         set -euo pipefail
+        if [ -z "${_SERVICE}" ]; then
+          echo "ERROR: _SERVICE substitution is required"
+          exit 1
+        fi
+        if [ -z "${_AR_REPO}" ]; then
+          echo "ERROR: _AR_REPO substitution is required"
+          exit 1
+        fi
+        if [ -z "${_IMAGE_NAME}" ]; then
+          echo "ERROR: _IMAGE_NAME substitution is required"
+          exit 1
+        fi
         if [ -z "${_MODEL_ARTIFACTS_URI}" ]; then
-          echo "ERROR: _MODEL_ARTIFACTS_URI substitution is required (example: gs://my-bucket/url-scanning-api-models)"
+          echo "ERROR: _MODEL_ARTIFACTS_URI substitution is required"
           exit 1
         fi
         echo "Downloading model artifacts from ${_MODEL_ARTIFACTS_URI}..."

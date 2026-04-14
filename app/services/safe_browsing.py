@@ -13,9 +13,7 @@ from app.schemas import SafeBrowsingResult
 
 logger = logging.getLogger(__name__)
 
-SAFE_BROWSING_URL = (
-    "https://safebrowsing.googleapis.com/v4/threatMatches:find"
-)
+SAFE_BROWSING_URL = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
 
 THREAT_TYPES = [
     "MALWARE",
@@ -28,9 +26,7 @@ PLATFORM_TYPES = ["ANY_PLATFORM"]
 THREAT_ENTRY_TYPES = ["URL"]
 
 
-async def check_safe_browsing(
-    url: str, client: httpx.AsyncClient
-) -> SafeBrowsingResult:
+async def check_safe_browsing(url: str, client: httpx.AsyncClient) -> SafeBrowsingResult:
     """Query Google Safe Browsing Lookup API v4 for the given URL."""
     if not settings.GOOGLE_SAFE_BROWSING_API_KEY:
         return SafeBrowsingResult(error="Google Safe Browsing API key not configured")

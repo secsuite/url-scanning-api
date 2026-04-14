@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     APP_HOST: str = "127.0.0.1"
     APP_PORT: int = 8000
     DEBUG: bool = False
+    PRELOAD_MODELS_ON_STARTUP: bool = False
 
     # ── Timeouts (seconds) ────────────────────────────────────────────────
     HTTP_TIMEOUT: float = 30.0

@@ -27,11 +27,9 @@ Notes on real-world behaviour that affect what we assert:
 
 from __future__ import annotations
 
-import os
 import time
 
 import pytest
-
 
 # ── Test URLs ─────────────────────────────────────────────────────────────────
 
@@ -53,6 +51,7 @@ RESPONSE_TIME_SLA_SECONDS = 8.0
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _scan(client, url: str):
     """POST /scan and return (response, elapsed_seconds)."""
     start = time.monotonic()
@@ -64,6 +63,7 @@ def _scan(client, url: str):
 # ═════════════════════════════════════════════════════════════════════════════
 # TC-01  Known malicious URL
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.requires_safe_browsing_key
 @pytest.mark.requires_virustotal_key
@@ -97,20 +97,13 @@ class TestMaliciousUrl:
 
         assert len(threats) >= 1
         for threat in threats:
-            assert threat.get("threat_type"), (
-                f"Threat entry missing 'threat_type': {threat}"
-            )
+            assert threat.get("threat_type"), f"Threat entry missing 'threat_type': {threat}"
 
     def test_threat_type_is_malware(self, live_client):
         """The official test URL is listed as MALWARE — the type must be present."""
         response, _ = _scan(live_client, MALICIOUS_URL)
-        threat_types = [
-            t["threat_type"]
-            for t in response.json()["safe_browsing"]["threats"]
-        ]
-        assert "MALWARE" in threat_types, (
-            f"Expected MALWARE in threat_types, got: {threat_types}"
-        )
+        threat_types = [t["threat_type"] for t in response.json()["safe_browsing"]["threats"]]
+        assert "MALWARE" in threat_types, f"Expected MALWARE in threat_types, got: {threat_types}"
 
     def test_risk_score_reflects_safe_browsing_hit(self, live_client):
         """
@@ -130,9 +123,9 @@ class TestMaliciousUrl:
         response, _ = _scan(live_client, MALICIOUS_URL)
         factors = response.json()["risk_factors"]
 
-        assert any("Google Safe Browsing" in f for f in factors), (
-            f"Expected 'Google Safe Browsing' in risk_factors, got: {factors}"
-        )
+        assert any(
+            "Google Safe Browsing" in f for f in factors
+        ), f"Expected 'Google Safe Browsing' in risk_factors, got: {factors}"
 
     def test_screenshot_still_captured(self, live_client):
         """
@@ -148,6 +141,7 @@ class TestMaliciousUrl:
 # ═════════════════════════════════════════════════════════════════════════════
 # TC-02  Safe URL
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.requires_safe_browsing_key
 @pytest.mark.requires_virustotal_key
@@ -192,12 +186,12 @@ class TestSafeUrl:
         response, _ = _scan(live_client, SAFE_URL)
         whois = response.json()["reputation"]["whois"]
 
-        assert whois["domain_age_days"] is not None, (
-            "WHOIS lookup returned no domain age — check WHOIS service availability"
-        )
-        assert whois["domain_age_days"] > 9000, (
-            f"google.com should be >9000 days old, got {whois['domain_age_days']}"
-        )
+        assert (
+            whois["domain_age_days"] is not None
+        ), "WHOIS lookup returned no domain age — check WHOIS service availability"
+        assert (
+            whois["domain_age_days"] > 9000
+        ), f"google.com should be >9000 days old, got {whois['domain_age_days']}"
 
     def test_whois_registrar_is_populated(self, live_client):
         response, _ = _scan(live_client, SAFE_URL)
@@ -223,9 +217,7 @@ class TestSafeUrl:
     def test_screenshot_url_ends_with_png(self, live_client):
         response, _ = _scan(live_client, SAFE_URL)
         screenshot_url = response.json()["screenshot"]["url"]
-        assert screenshot_url.endswith(".png"), (
-            f"Expected .png screenshot, got: {screenshot_url}"
-        )
+        assert screenshot_url.endswith(".png"), f"Expected .png screenshot, got: {screenshot_url}"
 
     def test_tranco_rank_present_for_google(self, live_client):
         """google.com is in the Tranco top-1M list — rank must not be None."""
@@ -233,12 +225,11 @@ class TestSafeUrl:
         tranco_rank = response.json()["reputation"]["tranco_rank"]
 
         assert tranco_rank is not None, (
-            "google.com must appear in the Tranco list. "
-            "Check that tranco_top1m.csv is present."
+            "google.com must appear in the Tranco list. " "Check that tranco_top1m.csv is present."
         )
-        assert tranco_rank <= 10, (
-            f"google.com should be ranked in the top 10, got rank {tranco_rank}"
-        )
+        assert (
+            tranco_rank <= 10
+        ), f"google.com should be ranked in the top 10, got rank {tranco_rank}"
 
     def test_dns_spf_and_dmarc_present_for_google(self, live_client):
         """google.com publishes both SPF and DMARC records."""
@@ -267,9 +258,17 @@ class TestSafeUrl:
         body = response.json()
 
         for field in (
-            "url", "scanned_at", "safe_browsing", "virustotal",
-            "reputation", "ssl", "screenshot", "file_analysis",
-            "phishing_detection", "risk_score", "risk_factors",
+            "url",
+            "scanned_at",
+            "safe_browsing",
+            "virustotal",
+            "reputation",
+            "ssl",
+            "screenshot",
+            "file_analysis",
+            "phishing_detection",
+            "risk_score",
+            "risk_factors",
         ):
             assert field in body, f"Missing top-level field: '{field}'"
 
@@ -277,6 +276,7 @@ class TestSafeUrl:
 # ═════════════════════════════════════════════════════════════════════════════
 # TC-03  URL with redirect chain
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.requires_safe_browsing_key
 @pytest.mark.requires_virustotal_key
@@ -314,9 +314,9 @@ class TestRedirectChain:
         response, _ = _scan(live_client, REDIRECT_URL)
         body = response.json()
 
-        assert len(body["redirect_chain"]) >= 2, (
-            f"Expected >= 2 entries in redirect_chain, got: {body['redirect_chain']}"
-        )
+        assert (
+            len(body["redirect_chain"]) >= 2
+        ), f"Expected >= 2 entries in redirect_chain, got: {body['redirect_chain']}"
 
     def test_final_url_differs_from_original(self, live_client):
         """
@@ -327,9 +327,9 @@ class TestRedirectChain:
         body = response.json()
 
         assert body["final_url"] is not None, "final_url should be set for a redirecting URL"
-        assert body["final_url"] != REDIRECT_URL, (
-            f"final_url should differ from original URL after redirect, got: {body['final_url']}"
-        )
+        assert (
+            body["final_url"] != REDIRECT_URL
+        ), f"final_url should differ from original URL after redirect, got: {body['final_url']}"
 
     def test_threat_intel_receives_final_url(self, live_client):
         """
@@ -356,17 +356,21 @@ class TestRedirectChain:
         if ssl.get("error") is None:
             assert ssl["is_self_signed"] is False
             # The SAN must match the final destination host, not the original
-            assert ssl["san_matches_domain"] is True, (
-                f"SAN mismatch — SSL cert should match final host in {final_url}"
-            )
+            assert (
+                ssl["san_matches_domain"] is True
+            ), f"SAN mismatch — SSL cert should match final host in {final_url}"
 
     def test_all_pipeline_stages_populated(self, live_client):
         """No pipeline stage should be absent from the response."""
         response, _ = _scan(live_client, REDIRECT_URL)
         body = response.json()
         for stage in (
-            "safe_browsing", "virustotal", "reputation",
-            "ssl", "screenshot", "file_analysis",
+            "safe_browsing",
+            "virustotal",
+            "reputation",
+            "ssl",
+            "screenshot",
+            "file_analysis",
         ):
             assert body[stage] is not None, f"Stage '{stage}' is None"
 
@@ -379,15 +383,16 @@ class TestRedirectChain:
         response, _ = _scan(live_client, REDIRECT_URL)
         screenshot = response.json()["screenshot"]
 
-        assert screenshot.get("error") is None, (
-            f"Screenshot failed for redirect URL: {screenshot['error']}"
-        )
+        assert (
+            screenshot.get("error") is None
+        ), f"Screenshot failed for redirect URL: {screenshot['error']}"
         assert screenshot["success"] is True
 
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TC-04  Malformed URL input
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 class TestMalformedUrl:
     """
@@ -408,9 +413,9 @@ class TestMalformedUrl:
 
         assert "detail" in body
         locations = [tuple(err.get("loc", [])) for err in body["detail"]]
-        assert any("url" in loc for loc in locations), (
-            f"Expected 'url' in error location, got: {locations}"
-        )
+        assert any(
+            "url" in loc for loc in locations
+        ), f"Expected 'url' in error location, got: {locations}"
 
     def test_missing_url_field_returns_422(self, live_client):
         response = live_client.post("/scan", json={})
@@ -432,9 +437,9 @@ class TestMalformedUrl:
     )
     def test_various_invalid_urls_rejected(self, live_client, bad_input):
         response = live_client.post("/scan", json={"url": bad_input})
-        assert response.status_code == 422, (
-            f"Expected 422 for {bad_input!r}, got {response.status_code}"
-        )
+        assert (
+            response.status_code == 422
+        ), f"Expected 422 for {bad_input!r}, got {response.status_code}"
 
     def test_no_pipeline_services_called_for_invalid_url(self, live_client):
         """
@@ -451,6 +456,7 @@ class TestMalformedUrl:
 # ═════════════════════════════════════════════════════════════════════════════
 # TC-05  Response-time SLA
 # ═════════════════════════════════════════════════════════════════════════════
+
 
 @pytest.mark.requires_safe_browsing_key
 @pytest.mark.requires_virustotal_key
@@ -515,11 +521,14 @@ class TestResponseTimeSLA:
         body = response.json()
 
         print(f"\n[SLA] Total elapsed: {elapsed:.2f}s")
-        print(f"[SLA] VT result: {body['virustotal'].get('detection_ratio')} "
-              f"(error: {body['virustotal'].get('error')})")
-        print(f"[SLA] Screenshot: success={body['screenshot']['success']} "
-              f"error={body['screenshot'].get('error')}")
-        print(f"[SLA] SSL: valid={body['ssl']['is_valid']} "
-              f"error={body['ssl'].get('error')}")
+        print(
+            f"[SLA] VT result: {body['virustotal'].get('detection_ratio')} "
+            f"(error: {body['virustotal'].get('error')})"
+        )
+        print(
+            f"[SLA] Screenshot: success={body['screenshot']['success']} "
+            f"error={body['screenshot'].get('error')}"
+        )
+        print(f"[SLA] SSL: valid={body['ssl']['is_valid']} " f"error={body['ssl'].get('error')}")
 
         assert response.status_code == 200  # always passes — output is the value

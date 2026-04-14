@@ -2,6 +2,7 @@
 Central configuration for the phishing detection pipeline.
 All paths, hyperparameters, and constants are defined here.
 """
+
 import os
 
 # =============================================================================
@@ -37,9 +38,21 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
 # Brand Configuration
 # =============================================================================
 BRAND_NAMES = [
-    "alibaba", "aol", "apple", "boa", "chase",
-    "dhl", "dropbox", "facebook", "google", "microsoft",
-    "office", "orange", "paypal", "wellsfargo", "yahoo"
+    "alibaba",
+    "aol",
+    "apple",
+    "boa",
+    "chase",
+    "dhl",
+    "dropbox",
+    "facebook",
+    "google",
+    "microsoft",
+    "office",
+    "orange",
+    "paypal",
+    "wellsfargo",
+    "yahoo",
 ]
 
 # Category IDs (1-indexed, 0 is background for Faster R-CNN)
@@ -69,7 +82,7 @@ BRAND_DOMAINS = {
 # =============================================================================
 # Faster R-CNN Hyperparameters
 # =============================================================================
-FRCNN_IMAGE_SIZE = 800       # Min size for image rescaling
+FRCNN_IMAGE_SIZE = 800  # Min size for image rescaling
 FRCNN_BATCH_SIZE = 4
 FRCNN_LEARNING_RATE = 0.005
 FRCNN_MOMENTUM = 0.9
@@ -82,19 +95,25 @@ FRCNN_SCORE_THRESHOLD = 0.5  # Min confidence to keep a detection
 # =============================================================================
 # Siamese Network Hyperparameters
 # =============================================================================
-SIAMESE_IMAGE_SIZE = 224     # Input size for Siamese branches
+SIAMESE_IMAGE_SIZE = 224  # Input size for Siamese branches
 SIAMESE_EMBEDDING_DIM = 128
 SIAMESE_BATCH_SIZE = 32
 SIAMESE_LEARNING_RATE = 0.0005
 SIAMESE_EPOCHS = 50
-SIAMESE_MARGIN = 1.0         # Contrastive loss margin
+SIAMESE_MARGIN = 1.0  # Contrastive loss margin
 SIAMESE_SIMILARITY_THRESHOLD = 0.7  # Cosine similarity threshold for matching
+
 
 # =============================================================================
 # Utility
 # =============================================================================
 def ensure_dirs():
     """Create all necessary output directories."""
-    for d in [PROCESSED_DIR, PROCESSED_IMAGES_DIR, REFERENCE_LOGOS_DIR,
-              CHECKPOINTS_DIR, OUTPUT_DIR]:
+    for d in [
+        PROCESSED_DIR,
+        PROCESSED_IMAGES_DIR,
+        REFERENCE_LOGOS_DIR,
+        CHECKPOINTS_DIR,
+        OUTPUT_DIR,
+    ]:
         os.makedirs(d, exist_ok=True)

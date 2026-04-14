@@ -7,10 +7,8 @@ from __future__ import annotations
 import asyncio
 import csv
 import logging
-import socket
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 from urllib.parse import urlparse
 
 import dns.resolver
@@ -26,9 +24,9 @@ _resolver.lifetime = 6.0
 
 from app.config import settings
 from app.schemas import (
+    DNSInfo,
     ReputationResult,
     WHOISInfo,
-    DNSInfo,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,6 +65,7 @@ def _extract_domain(url: str) -> str:
 
 
 # ── WHOIS ─────────────────────────────────────────────────────────────────────
+
 
 def _check_whois(domain: str) -> WHOISInfo:
     try:
@@ -165,6 +164,7 @@ def _check_dns(domain: str) -> DNSInfo:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 async def check_reputation(url: str) -> ReputationResult:
     """Run all reputation checks for the given URL."""

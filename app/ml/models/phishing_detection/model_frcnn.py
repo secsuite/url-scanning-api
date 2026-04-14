@@ -4,6 +4,7 @@ Uses a pretrained ResNet-50 FPN backbone from torchvision,
 with the classification head replaced for our 16-class problem
 (15 brands + background).
 """
+
 import torchvision
 from torchvision.models.detection import FasterRCNN
 from torchvision.models.detection.rpn import AnchorGenerator
