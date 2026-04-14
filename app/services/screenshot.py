@@ -42,9 +42,16 @@ def _capture_screenshot_sync(url: str, timeout: float, dest_dir: str) -> Screens
             
             page.goto(
                 url,
-                wait_until="domcontentloaded",
+                wait_until="load",
                 timeout=timeout,
             )
+
+            # Best-effort: wait for network to go idle so JS-rendered content
+            # is visible. Cap at 5 s so heavy sites don't stall indefinitely.
+            try:
+                page.wait_for_load_state("networkidle", timeout=5000)
+            except Exception:
+                pass  # proceed with whatever is rendered so far
 
             filename = f"{uuid.uuid4().hex}.png"
             filepath = Path(dest_dir) / filename
@@ -65,12 +72,28 @@ def _capture_screenshot_sync(url: str, timeout: float, dest_dir: str) -> Screens
         return ScreenshotResult(error=str(exc))
 
 
-async def capture_screenshot(url: str) -> ScreenshotResult:
-    """Navigate to *url* in a headless browser and capture a viewport screenshot."""
-    # Run the synchronous Playwright implementation in a dedicated thread
-    return await asyncio.to_thread(
-        _capture_screenshot_sync,
-        url,
-        settings.SCREENSHOT_TIMEOUT,
-        settings.SCREENSHOT_DIR,
-    )
+async def capture_screenshot(url: str, *, max_attempts: int = 3) -> ScreenshotResult:
+    """Navigate to *url* in a headless browser and capture a viewport screenshot.
+
+    Retries up to *max_attempts* times so that transient browser or network
+    failures don't silently skip phishing detection.
+    """
+    last_result: ScreenshotResult | None = None
+    for attempt in range(1, max_attempts + 1):
+        result = await asyncio.to_thread(
+            _capture_screenshot_sync,
+            url,
+            settings.SCREENSHOT_TIMEOUT,
+            settings.SCREENSHOT_DIR,
+        )
+        if result.success:
+            return result
+        last_result = result
+        if attempt < max_attempts:
+            logger.warning(
+                "Screenshot attempt %d/%d failed for %s: %s — retrying",
+                attempt, max_attempts, url, result.error,
+            )
+            await asyncio.sleep(1)
+    logger.error("All %d screenshot attempts failed for %s", max_attempts, url)
+    return last_result

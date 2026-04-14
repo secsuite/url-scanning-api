@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # ── Timeouts (seconds) ────────────────────────────────────────────────
     HTTP_TIMEOUT: float = 30.0
-    SCREENSHOT_TIMEOUT: float = 8000   # Playwright uses ms
+    SCREENSHOT_TIMEOUT: float = 15000  # Playwright uses ms
     FILE_DOWNLOAD_MAX_SIZE: int = 50 * 1024 * 1024  # 50 MB
     # Maximum seconds to poll VirusTotal for a *fresh* scan result.
     # Cached results are returned immediately and are unaffected by this limit.
