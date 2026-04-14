@@ -3,6 +3,7 @@ POST /scan endpoint — the external surface of the analysis pipeline.
 """
 
 from fastapi import APIRouter
+
 from app.schemas import ScanRequest, ScanResponse
 from app.services.orchestrator import analyze_url
 

@@ -93,8 +93,8 @@ class GeneralFileInfo(FeatureType):
             [
                 raw_obj["size"],
                 raw_obj["entropy"],
-                raw_obj["is_pe"], # categorical
-                raw_obj["start_bytes"], # categorical
+                raw_obj["is_pe"],  # categorical
+                raw_obj["start_bytes"],  # categorical
             ],
             dtype=np.float32,
         )
@@ -114,7 +114,7 @@ class ByteHistogram(FeatureType):
     def raw_features(self, bytez, pe):
         counts = np.bincount(np.frombuffer(bytez, dtype=np.uint8), minlength=256)
         return counts.tolist()
-    
+
     def process_raw_features(self, raw_obj):
         counts = np.array(raw_obj, dtype=np.float32)
         sum = counts.sum()
@@ -161,7 +161,9 @@ class ByteEntropyHistogram(FeatureType):
             # strided trick from here: http://www.rigtorp.se/2011/01/01/rolling-statistics-numpy.html
             shape = a.shape[:-1] + (a.shape[-1] - self.window + 1, self.window)
             strides = a.strides + (a.strides[-1],)
-            blocks = np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)[:: self.step, :]
+            blocks = np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)[
+                :: self.step, :
+            ]
 
             # from the blocks, compute histogram
             for block in blocks:
@@ -196,42 +198,40 @@ class StringExtractor(FeatureType):
             # https://www.stackzero.net/python-string-analysis/
             # https://engineering.avast.io/yara-in-search-of-regular-expressions/
             "url": re.compile("\\b(?:http|https|ftp):\\/\\/[a-zA-Z0-9-._~:?#[\\]@!$&'()*+,;=]+"),
-            "ipv4_addr": re.compile("\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b"),
-            "ipv6_addr": re.compile("\\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\\b|\\b(?:[A-Fa-f0-9]{1,4}:){1,7}:\\b|\\b:[A-Fa-f0-9]{1,4}(?::[A-Fa-f0-9]{1,4}){1,6}\\b"),
+            "ipv4_addr": re.compile(
+                "\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b"
+            ),
+            "ipv6_addr": re.compile(
+                "\\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\\b|\\b(?:[A-Fa-f0-9]{1,4}:){1,7}:\\b|\\b:[A-Fa-f0-9]{1,4}(?::[A-Fa-f0-9]{1,4}){1,6}\\b"
+            ),
             "mac_addr": re.compile("\\b(?:[0-9A-Fa-f]{2}[:-]){5}(?:[0-9A-Fa-f]{2})\\b"),
             "email_addr": re.compile("\\b(?:[0-9A-Fa-f]{2}[:-]){5}(?:[0-9A-Fa-f]{2})\\b"),
             "btc_wallet": re.compile("[13][a-km-zA-HJ-NP-Z1-9]{25,34}"),
-
             # Windows strings
             "file_path": re.compile("\\bC:/"),
             "dos_msg": re.compile("!This program "),
             "registry_key": re.compile("\\b(?:KHEY_|KHLM|HKCU)"),
-
             # Linux strings
             "/dev/": re.compile("/dev/"),
             "/proc/": re.compile("/proc/"),
             "/bin/": re.compile("/bin/"),
             "/usr/": re.compile("/usr/"),
             "/tmp/": re.compile("/tmp/"),
-
             # PDF strings
             "/URI": re.compile("/URI"),
             "/FlateDecode": re.compile("/FlateDecode"),
             "/EmbeddedFile": re.compile("/EmbeddedFile"),
-
             # HTML and JS strings
             "html": re.compile("html", re.IGNORECASE),
             "javascript": re.compile("javascript", re.IGNORECASE),
             "<script": re.compile("<script", re.IGNORECASE),
             ".click(": re.compile(".click", re.IGNORECASE),
             "onlick": re.compile("onclick", re.IGNORECASE),
-
             # Powershell strings
             "powershell": re.compile("powershell", re.IGNORECASE),
             "Invoke-Expression": re.compile("Invoke-Expression"),
             "Invoke-Command": re.compile("Invoke-Command"),
             "Start-process": re.compile("Start-process"),
-
             # Network strings
             "get": re.compile("GET /", re.IGNORECASE),
             "post": re.compile("POST /", re.IGNORECASE),
@@ -244,14 +244,14 @@ class StringExtractor(FeatureType):
             "internet": re.compile("internet", re.IGNORECASE),
             "download": re.compile("download", re.IGNORECASE),
             "connect": re.compile("connect", re.IGNORECASE),
-
             # Cryptography and encoding strings
             "base64": re.compile("base64", re.IGNORECASE),
-            "base64string": re.compile("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"),
+            "base64string": re.compile(
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+            ),
             "crypt": re.compile("crypt"),
             "encode": re.compile("encode", re.IGNORECASE),
             "decode": re.compile("decode", re.IGNORECASE),
-
             # Miscellaneous strings
             "cache": re.compile("cache", re.IGNORECASE),
             "certificate": re.compile("certificate", re.IGNORECASE),
@@ -377,7 +377,9 @@ class SectionInfo(FeatureType):
         isection = 0
         while entry_section == "" and isection < len(pe.sections):
             if pe.sections[isection].Characteristics & 0x20000000 > 0:
-                entry_section = pe.sections[isection].Name.strip(b"\x00").decode(errors="ignore").lower()
+                entry_section = (
+                    pe.sections[isection].Name.strip(b"\x00").decode(errors="ignore").lower()
+                )
             isection += 1
 
         raw_obj = {"entry": entry_section}
@@ -389,7 +391,9 @@ class SectionInfo(FeatureType):
                 "vsize": section.Misc_VirtualSize,
                 "size_ratio": section.SizeOfRawData / len(bytez),
                 "vsize_ratio": section.SizeOfRawData / max(section.Misc_VirtualSize, 1),
-                "props": [sc[10:] for sc, _ in pefile.section_characteristics if section.__dict__[sc]],
+                "props": [
+                    sc[10:] for sc, _ in pefile.section_characteristics if section.__dict__[sc]
+                ],
             }
             for section in pe.sections
         ]
@@ -413,7 +417,7 @@ class SectionInfo(FeatureType):
             raw_obj["overlay"] = {
                 "size": overlay_size,
                 "size_ratio": overlay_size / len(bytez),
-                "entropy": entropy
+                "entropy": entropy,
             }
 
         return raw_obj
@@ -445,19 +449,29 @@ class SectionInfo(FeatureType):
             max(size_ratios),
             min(size_ratios),
             max(vsize_ratios),
-            min(vsize_ratios)
+            min(vsize_ratios),
         ]
 
         # Properties of all the individual sections
         section_sizes = [(s["name"], s["size"]) for s in sections]
-        section_sizes_hashed = FeatureHasher(50, input_type="pair").transform([section_sizes]).toarray()[0]
+        section_sizes_hashed = (
+            FeatureHasher(50, input_type="pair").transform([section_sizes]).toarray()[0]
+        )
         section_vsize = [(s["name"], s["vsize"]) for s in sections]
-        section_vsize_hashed = FeatureHasher(50, input_type="pair").transform([section_vsize]).toarray()[0]
+        section_vsize_hashed = (
+            FeatureHasher(50, input_type="pair").transform([section_vsize]).toarray()[0]
+        )
         section_entropy = [(s["name"], s["entropy"]) for s in sections]
-        section_entropy_hashed = FeatureHasher(50, input_type="pair").transform([section_entropy]).toarray()[0]
+        section_entropy_hashed = (
+            FeatureHasher(50, input_type="pair").transform([section_entropy]).toarray()[0]
+        )
         characteristics = [f"{s['name']}:{p}" for s in sections for p in s["props"]]
-        characteristics_hashed = FeatureHasher(50, input_type="string").transform([characteristics]).toarray()[0]
-        entry_name_hashed = FeatureHasher(10, input_type="string").transform([[raw_obj["entry"]]]).toarray()[0]
+        characteristics_hashed = (
+            FeatureHasher(50, input_type="string").transform([characteristics]).toarray()[0]
+        )
+        entry_name_hashed = (
+            FeatureHasher(10, input_type="string").transform([[raw_obj["entry"]]]).toarray()[0]
+        )
 
         return np.hstack(
             [
@@ -469,7 +483,7 @@ class SectionInfo(FeatureType):
                 entry_name_hashed,
                 raw_obj["overlay"]["size"],
                 raw_obj["overlay"]["size_ratio"],
-                raw_obj["overlay"]["entropy"]
+                raw_obj["overlay"]["entropy"],
             ]
         ).astype(np.float32)
 
@@ -512,11 +526,19 @@ class ImportsInfo(FeatureType):
 
         # Unique libraries
         libraries = list(set([l.lower() for l in raw_obj.keys()]))
-        libraries_hashed = FeatureHasher(256, input_type="string", alternate_sign=False).transform([libraries]).toarray()[0]
+        libraries_hashed = (
+            FeatureHasher(256, input_type="string", alternate_sign=False)
+            .transform([libraries])
+            .toarray()[0]
+        )
 
         # A string like "kernel32.dll:CreateFileMappingA" for each imported function
         imports = [lib.lower() + ":" + e for lib, elist in raw_obj.items() for e in elist]
-        imports_hashed = FeatureHasher(1024, input_type="string", alternate_sign=False).transform([imports]).toarray()[0]
+        imports_hashed = (
+            FeatureHasher(1024, input_type="string", alternate_sign=False)
+            .transform([imports])
+            .toarray()[0]
+        )
 
         # Number of libraries/imports
         lengths = [len(imports), len(libraries)]
@@ -726,7 +748,9 @@ class HeaderFileInfo(FeatureType):
             return raw_obj
 
         raw_obj["coff"]["timestamp"] = pe.FILE_HEADER.TimeDateStamp
-        raw_obj["coff"]["machine"] = pefile.MACHINE_TYPE.get(pe.FILE_HEADER.Machine, "IMAGE_FILE_MACHINE_UNKNOWN")
+        raw_obj["coff"]["machine"] = pefile.MACHINE_TYPE.get(
+            pe.FILE_HEADER.Machine, "IMAGE_FILE_MACHINE_UNKNOWN"
+        )
         raw_obj["coff"]["number_of_sections"] = pe.FILE_HEADER.NumberOfSections
         raw_obj["coff"]["number_of_symbols"] = pe.FILE_HEADER.NumberOfSymbols
         raw_obj["coff"]["sizeof_optional_header"] = pe.FILE_HEADER.SizeOfOptionalHeader
@@ -742,15 +766,21 @@ class HeaderFileInfo(FeatureType):
         raw_obj["optional"]["minor_image_version"] = pe.OPTIONAL_HEADER.MinorImageVersion
         raw_obj["optional"]["major_linker_version"] = pe.OPTIONAL_HEADER.MajorLinkerVersion
         raw_obj["optional"]["minor_linker_version"] = pe.OPTIONAL_HEADER.MinorLinkerVersion
-        raw_obj["optional"]["major_operating_system_version"] = pe.OPTIONAL_HEADER.MajorOperatingSystemVersion
-        raw_obj["optional"]["minor_operating_system_version"] = pe.OPTIONAL_HEADER.MinorOperatingSystemVersion
+        raw_obj["optional"][
+            "major_operating_system_version"
+        ] = pe.OPTIONAL_HEADER.MajorOperatingSystemVersion
+        raw_obj["optional"][
+            "minor_operating_system_version"
+        ] = pe.OPTIONAL_HEADER.MinorOperatingSystemVersion
         raw_obj["optional"]["major_subsystem_version"] = pe.OPTIONAL_HEADER.MajorSubsystemVersion
         raw_obj["optional"]["minor_subsystem_version"] = pe.OPTIONAL_HEADER.MinorSubsystemVersion
         raw_obj["optional"]["sizeof_code"] = pe.OPTIONAL_HEADER.SizeOfCode
         raw_obj["optional"]["sizeof_headers"] = pe.OPTIONAL_HEADER.SizeOfHeaders
         raw_obj["optional"]["sizeof_image"] = pe.OPTIONAL_HEADER.SizeOfImage
         raw_obj["optional"]["sizeof_initialized_data"] = pe.OPTIONAL_HEADER.SizeOfInitializedData
-        raw_obj["optional"]["sizeof_uninitialized_data"] = pe.OPTIONAL_HEADER.SizeOfUninitializedData
+        raw_obj["optional"][
+            "sizeof_uninitialized_data"
+        ] = pe.OPTIONAL_HEADER.SizeOfUninitializedData
         raw_obj["optional"]["sizeof_stack_reserve"] = pe.OPTIONAL_HEADER.SizeOfStackReserve
         raw_obj["optional"]["sizeof_stack_commit"] = pe.OPTIONAL_HEADER.SizeOfStackCommit
         raw_obj["optional"]["sizeof_heap_reserve"] = pe.OPTIONAL_HEADER.SizeOfHeapReserve
@@ -758,11 +788,13 @@ class HeaderFileInfo(FeatureType):
         raw_obj["optional"]["address_of_entrypoint"] = pe.OPTIONAL_HEADER.AddressOfEntryPoint
         raw_obj["optional"]["base_of_code"] = pe.OPTIONAL_HEADER.BaseOfCode
         raw_obj["optional"]["image_base"] = pe.OPTIONAL_HEADER.ImageBase
-        raw_obj["optional"]["section_alignment"] =  pe.OPTIONAL_HEADER.SectionAlignment
-        raw_obj["optional"]["checksum"] =  pe.OPTIONAL_HEADER.CheckSum
+        raw_obj["optional"]["section_alignment"] = pe.OPTIONAL_HEADER.SectionAlignment
+        raw_obj["optional"]["checksum"] = pe.OPTIONAL_HEADER.CheckSum
         raw_obj["optional"]["number_of_rvas_and_sizes"] = pe.OPTIONAL_HEADER.NumberOfRvaAndSizes
         raw_obj["optional"]["dll_characteristics"] = [
-            k[25:] for k, v in pe.OPTIONAL_HEADER.__dict__.items() if k.startswith("IMAGE_DLLCHARACTERISTICS_") and v
+            k[25:]
+            for k, v in pe.OPTIONAL_HEADER.__dict__.items()
+            if k.startswith("IMAGE_DLLCHARACTERISTICS_") and v
         ]
         dos_dict = pe.DOS_HEADER.dump_dict()
         for member in self._dos_members:
@@ -807,7 +839,10 @@ class HeaderFileInfo(FeatureType):
                 raw_obj["optional"]["checksum"],
                 raw_obj["optional"]["number_of_rvas_and_sizes"],
                 [ch in raw_obj["coff"]["characteristics"] for ch in self._image_characteristics],
-                [ch in raw_obj["optional"]["dll_characteristics"] for ch in self._dll_characteristics],
+                [
+                    ch in raw_obj["optional"]["dll_characteristics"]
+                    for ch in self._dll_characteristics
+                ],
                 [raw_obj["dos"][member] for member in self._dos_members],
             ]
         ).astype(np.float32)
@@ -819,7 +854,7 @@ class DataDirectories(FeatureType):
     """
 
     name = "datadirectories"
-    dim = 16*2 + 2
+    dim = 16 * 2 + 2
 
     def __init__(self):
         super(FeatureType, self).__init__()
@@ -870,7 +905,7 @@ class DataDirectories(FeatureType):
             return np.zeros(self.dim, dtype=np.float32)
 
         features = np.zeros(2 * len(self._name_order) + 2, dtype=np.float32)
-        for i in range(1, len(raw_obj)-1):
+        for i in range(1, len(raw_obj) - 1):
             idx = self._name_order.index(raw_obj[i]["name"])
             features[2 * idx] = raw_obj[i]["size"]
             features[2 * idx + 1] = raw_obj[i]["virtual_address"]
@@ -901,7 +936,9 @@ class RichHeader(FeatureType):
 
         number_of_pairs = int(len(raw_obj) / 2)
         paired_values = [(str(raw_obj[i]), raw_obj[i + 1]) for i in range(0, len(raw_obj) - 1, 2)]
-        paired_values_hashed = FeatureHasher(32, input_type="pair").transform([paired_values]).toarray()[0]
+        paired_values_hashed = (
+            FeatureHasher(32, input_type="pair").transform([paired_values]).toarray()[0]
+        )
         return np.hstack([number_of_pairs, paired_values_hashed]).astype(np.float32)
 
 
@@ -973,16 +1010,18 @@ class AuthenticodeSignature(FeatureType):
         if not raw_obj:
             return np.zeros(self.dim, dtype=np.float32)
 
-        return np.hstack([
-            raw_obj["num_certs"],
-            raw_obj["self_signed"],
-            raw_obj["empty_program_name"],
-            raw_obj["no_countersigner"],
-            raw_obj["parse_error"],
-            raw_obj["chain_max_depth"],
-            raw_obj["latest_signing_time"],
-            raw_obj["signing_time_diff"],
-        ]).astype(np.float32)
+        return np.hstack(
+            [
+                raw_obj["num_certs"],
+                raw_obj["self_signed"],
+                raw_obj["empty_program_name"],
+                raw_obj["no_countersigner"],
+                raw_obj["parse_error"],
+                raw_obj["chain_max_depth"],
+                raw_obj["latest_signing_time"],
+                raw_obj["signing_time_diff"],
+            ]
+        ).astype(np.float32)
 
 
 class PEFormatWarnings(FeatureType):
@@ -997,7 +1036,7 @@ class PEFormatWarnings(FeatureType):
         self.warning_prefixes = set()
         self.warning_suffixes = set()
         self.warning_ids = {}
-        
+
         if isinstance(warnings_file, Path) and warnings_file.exists():
             with open(warnings_file, "r") as f:
                 i = 0
@@ -1036,7 +1075,6 @@ class PEFormatWarnings(FeatureType):
 
         return sorted(warnings_norm)
 
-
     def process_raw_features(self, raw_obj):
         if not raw_obj:
             return np.zeros(self.dim, dtype=np.float32)
@@ -1044,7 +1082,7 @@ class PEFormatWarnings(FeatureType):
         ids = [0 for _ in range(self.dim)]
         for warning_norm in raw_obj:
             ids[self.warning_ids[warning_norm]] = 1.0
-        ids[self.dim-1] = len(raw_obj)
+        ids[self.dim - 1] = len(raw_obj)
         return np.array(ids, dtype=np.float32)
 
 
@@ -1059,26 +1097,32 @@ class PEFeatureExtractor(object):
         warnings_file = Path(os.path.join(cwd, "pefile_warnings.txt"))
 
         self.features = []
-        features = OrderedDict([
-            ("GeneralFileInfo", GeneralFileInfo()),
-            ("ByteHistogram", ByteHistogram()),
-            ("ByteEntropyHistogram", ByteEntropyHistogram()),
-            ("StringExtractor", StringExtractor()),
-            ("HeaderFileInfo", HeaderFileInfo()),
-            ("SectionInfo", SectionInfo()),
-            ("ImportsInfo", ImportsInfo()),
-            ("ExportsInfo", ExportsInfo()),
-            ("DataDirectories", DataDirectories()),
-            ("RichHeader", RichHeader()),
-            ("AuthenticodeSignature", AuthenticodeSignature()),
-            ("PEFormatWarnings", PEFormatWarnings(warnings_file)),
-        ])
+        features = OrderedDict(
+            [
+                ("GeneralFileInfo", GeneralFileInfo()),
+                ("ByteHistogram", ByteHistogram()),
+                ("ByteEntropyHistogram", ByteEntropyHistogram()),
+                ("StringExtractor", StringExtractor()),
+                ("HeaderFileInfo", HeaderFileInfo()),
+                ("SectionInfo", SectionInfo()),
+                ("ImportsInfo", ImportsInfo()),
+                ("ExportsInfo", ExportsInfo()),
+                ("DataDirectories", DataDirectories()),
+                ("RichHeader", RichHeader()),
+                ("AuthenticodeSignature", AuthenticodeSignature()),
+                ("PEFormatWarnings", PEFormatWarnings(warnings_file)),
+            ]
+        )
         feature_names = features.keys()
 
         if isinstance(features_file, Path) and features_file.exists():
             with features_file.open(encoding="utf8") as f:
                 x = json.load(f)
-                self.features = [features[feature] for feature in feature_names if x["features"].get(feature) is not None]
+                self.features = [
+                    features[feature]
+                    for feature in feature_names
+                    if x["features"].get(feature) is not None
+                ]
         else:
             self.features = [features[feature] for feature in feature_names]
 

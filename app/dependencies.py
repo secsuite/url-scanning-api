@@ -8,7 +8,6 @@ import httpx
 
 from app.config import settings
 
-
 # ── Shared HTTP client ────────────────────────────────────────────────────────
 
 _http_client: httpx.AsyncClient | None = None
@@ -32,5 +31,3 @@ async def close_http_client() -> None:
     if _http_client and not _http_client.is_closed:
         await _http_client.aclose()
         _http_client = None
-
-

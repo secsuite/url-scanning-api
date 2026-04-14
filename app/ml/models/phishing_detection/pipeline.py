@@ -19,6 +19,7 @@ Usage:
     python pipeline.py --image <path> --url <url>
     python pipeline.py --image <path>  (without URL, just detection + matching)
 """
+
 import os
 import argparse
 import torch
@@ -85,11 +86,13 @@ class PhishingDetector:
         # Load reference logo embeddings
         print("Computing reference logo embeddings...")
         self.reference_embeddings = {}
-        self.siamese_transform = T.Compose([
-            T.Resize((config.SIAMESE_IMAGE_SIZE, config.SIAMESE_IMAGE_SIZE)),
-            T.ToTensor(),
-            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
+        self.siamese_transform = T.Compose(
+            [
+                T.Resize((config.SIAMESE_IMAGE_SIZE, config.SIAMESE_IMAGE_SIZE)),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
 
         for brand in config.BRAND_NAMES:
             ref_path = os.path.join(reference_dir, f"{brand}.png")
@@ -124,12 +127,14 @@ class PhishingDetector:
             score = outputs["scores"][i].item()
             if score < self.score_threshold:
                 continue
-            detections.append({
-                "bbox": outputs["boxes"][i].cpu().tolist(),
-                "label": outputs["labels"][i].item(),
-                "frcnn_label": "logo",
-                "score": score,
-            })
+            detections.append(
+                {
+                    "bbox": outputs["boxes"][i].cpu().tolist(),
+                    "label": outputs["labels"][i].item(),
+                    "frcnn_label": "logo",
+                    "score": score,
+                }
+            )
 
         return detections
 
@@ -150,9 +155,7 @@ class PhishingDetector:
 
         matches = []
         for brand, ref_emb in self.reference_embeddings.items():
-            sim = torch.nn.functional.cosine_similarity(
-                crop_embedding, ref_emb, dim=1
-            ).item()
+            sim = torch.nn.functional.cosine_similarity(crop_embedding, ref_emb, dim=1).item()
             matches.append({"brand": brand, "similarity": sim})
 
         matches.sort(key=lambda x: x["similarity"], reverse=True)
@@ -160,11 +163,11 @@ class PhishingDetector:
 
     # Brand name aliases used to catch variants in domains
     _BRAND_ALIASES = {
-        "boa":        ["bankofamerica", "bank-of-america"],
-        "office":     ["office365", "office-365"],
-        "facebook":   ["fb", "meta"],
-        "google":     ["gmail", "youtube"],
-        "microsoft":  ["msn", "outlook", "hotmail", "azure"],
+        "boa": ["bankofamerica", "bank-of-america"],
+        "office": ["office365", "office-365"],
+        "facebook": ["fb", "meta"],
+        "google": ["gmail", "youtube"],
+        "microsoft": ["msn", "outlook", "hotmail", "azure"],
         "wellsfargo": ["wellsfargo", "wells-fargo"],
     }
 
@@ -264,8 +267,9 @@ class PhishingDetector:
             "match_type": analysis["match_type"],
             "risk_level": analysis["risk_level"],
             "reason": analysis["reason"],
-            **{k: v for k, v in analysis.items()
-               if k not in ("match_type", "risk_level", "reason")},
+            **{
+                k: v for k, v in analysis.items() if k not in ("match_type", "risk_level", "reason")
+            },
         }
 
     def analyze(self, image_path, url=None):
@@ -301,10 +305,14 @@ class PhishingDetector:
         # Step 2 & 3: Match each detected logo and check domain
         for det in detections:
             x1, y1, x2, y2 = det["bbox"]
-            logo_crop = image.crop((
-                max(0, int(x1)), max(0, int(y1)),
-                min(image.width, int(x2)), min(image.height, int(y2))
-            ))
+            logo_crop = image.crop(
+                (
+                    max(0, int(x1)),
+                    max(0, int(y1)),
+                    min(image.width, int(x2)),
+                    min(image.height, int(y2)),
+                )
+            )
 
             # Match against reference logos
             matches = self.match_logo(logo_crop)
@@ -379,7 +387,9 @@ def main():
     parser.add_argument("--frcnn-checkpoint", type=str, default=config.FRCNN_CHECKPOINT)
     parser.add_argument("--siamese-checkpoint", type=str, default=config.SIAMESE_CHECKPOINT)
     parser.add_argument("--score-threshold", type=float, default=config.FRCNN_SCORE_THRESHOLD)
-    parser.add_argument("--similarity-threshold", type=float, default=config.SIAMESE_SIMILARITY_THRESHOLD)
+    parser.add_argument(
+        "--similarity-threshold", type=float, default=config.SIAMESE_SIMILARITY_THRESHOLD
+    )
     parser.add_argument("--output", type=str, default=None, help="Output visualization path")
     args = parser.parse_args()
 
@@ -408,12 +418,18 @@ def main():
     for i, det in enumerate(result["detections"]):
         print(f"\n  Detection #{i+1}:")
         print(f"    FRCNN label: {det['frcnn_label']} (score={det['frcnn_score']:.3f})")
-        print(f"    Best match:  {det['best_match_brand']} (sim={det['best_match_similarity']:.3f})")
+        print(
+            f"    Best match:  {det['best_match_brand']} (sim={det['best_match_similarity']:.3f})"
+        )
         if det["domain_info"]:
             di = det["domain_info"]
             print(f"    Domain:      {di['domain']} ({di.get('match_type', '')})")
             print(f"    Reason:      {di.get('reason', '')}")
-        status = "PHISHING" if det["is_phishing"] else ("SAFE" if det["is_phishing"] is False else "UNKNOWN")
+        status = (
+            "PHISHING"
+            if det["is_phishing"]
+            else ("SAFE" if det["is_phishing"] is False else "UNKNOWN")
+        )
         print(f"    Status:      {status}")
 
     print(f"\n{'=' * 60}")
@@ -423,9 +439,7 @@ def main():
         print("No phishing detected")
 
     if args.output or result["detections"]:
-        output_path = args.output or os.path.join(
-            config.OUTPUT_DIR, "pipeline_result.png"
-        )
+        output_path = args.output or os.path.join(config.OUTPUT_DIR, "pipeline_result.png")
         detector.visualize_result(result, output_path)
 
 

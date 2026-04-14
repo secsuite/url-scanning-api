@@ -81,7 +81,7 @@ gcloud storage rsync -r app/ml/models gs://url-scanning-api-models-bucket/url-sc
 
 If the bucket already exists, continue with only the `rsync` command.
 
-### 5. Build + Deploy (Bakes Models into Image) 
+### 5. Build + Deploy (Bakes Models into Image)
 
 takes 15min go to "https://console.cloud.google.com/cloud-build/builds;region=global?project=url-scanning-api" to check logs and status
 

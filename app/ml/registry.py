@@ -13,8 +13,8 @@ import logging
 from pathlib import Path
 
 from app.config import settings
-from app.ml.phishing_detector import PhishingDetector
 from app.ml.binary_malware import BinaryMalwareDetector
+from app.ml.phishing_detector import PhishingDetector
 from app.ml.script_detector import ScriptDetector
 
 logger = logging.getLogger(__name__)
@@ -44,18 +44,14 @@ def _load_phishing() -> None:
 def _load_malware() -> None:
     global _malware_detector
     _malware_detector = BinaryMalwareDetector(
-        model_path=str(
-            Path(settings.MODELS_DIR) / "malicious_binary_detection" / "PE_detector.lgb"
-        )
+        model_path=str(Path(settings.MODELS_DIR) / "malicious_binary_detection" / "PE_detector.lgb")
     )
 
 
 def _load_script() -> None:
     global _script_detector
     _script_detector = ScriptDetector(
-        model_path=str(
-            Path(settings.MODELS_DIR) / "malicious_script_detection" / "saved_model"
-        )
+        model_path=str(Path(settings.MODELS_DIR) / "malicious_script_detection" / "saved_model")
     )
 
 

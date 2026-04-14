@@ -42,9 +42,7 @@ def _parse_analysis_data(data: dict) -> VirusTotalResult:
     )
 
 
-async def check_virustotal(
-    url: str, client: httpx.AsyncClient
-) -> VirusTotalResult:
+async def check_virustotal(url: str, client: httpx.AsyncClient) -> VirusTotalResult:
     """Submit a URL to VirusTotal and retrieve the analysis results.
 
     Cached reports are returned immediately.  For fresh scans the function
@@ -137,9 +135,7 @@ async def check_virustotal(
         return VirusTotalResult(error=str(exc))
 
 
-async def check_virustotal_file_hash(
-    sha256: str, client: httpx.AsyncClient
-) -> dict:
+async def check_virustotal_file_hash(sha256: str, client: httpx.AsyncClient) -> dict:
     """Look up a file hash on VirusTotal and return raw results."""
     if not settings.VIRUSTOTAL_API_KEY:
         return {"error": "VirusTotal API key not configured"}

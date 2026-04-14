@@ -67,6 +67,7 @@ log = logging.getLogger("pe_inference")
 @dataclass
 class PredictionResult:
     """Container for a single prediction."""
+
     file_path: str
     score: float
     verdict: str  # "MALICIOUS" or "BENIGN"
@@ -117,9 +118,7 @@ class PEMalwareDetector:
         float
             Probability in [0, 1]. Higher → more likely malicious.
         """
-        vec = np.array(
-            self.extractor.feature_vector(file_data), dtype=np.float32
-        )
+        vec = np.array(self.extractor.feature_vector(file_data), dtype=np.float32)
         score = float(self.booster.predict([vec])[0])
         return score
 
@@ -299,11 +298,7 @@ def main() -> None:
 
     # Scan a directory
     if args.scan_dir:
-        results.extend(
-            detector.predict_directory(
-                args.scan_dir, recursive=not args.no_recursive
-            )
-        )
+        results.extend(detector.predict_directory(args.scan_dir, recursive=not args.no_recursive))
 
     # Individual files
     if args.files:

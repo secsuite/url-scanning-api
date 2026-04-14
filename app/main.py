@@ -2,10 +2,10 @@
 FastAPI application entry-point.
 """
 
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 import asyncio
 import sys
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -19,8 +19,8 @@ from app.dependencies import close_http_client
 from app.ml.registry import preload_all
 from app.routers import scan
 
-
 # ── Lifespan ──────────────────────────────────────────────────────────────────
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
