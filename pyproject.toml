@@ -40,6 +40,15 @@ dependencies = [
     "signify>=0.5.2",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "black>=24.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "pytest>=8.0.0",
+    "pre-commit>=3.7.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/secsuite"
 Repository = "https://github.com/secsuite/url-scanning-api.git"
@@ -49,3 +58,36 @@ markers = [
     "requires_safe_browsing_key: skip if GOOGLE_SAFE_BROWSING_API_KEY is not set",
     "requires_virustotal_key: skip if VIRUSTOTAL_API_KEY is not set",
 ]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+extend-exclude = '''
+(
+  app/ml/models
+)
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["app/ml/models"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["app", "tests"]
+exclude = "app/ml/models"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = false
+no_implicit_optional = true
+show_error_codes = true
+
+[tool.setuptools.packages.find]
+include = ["app*"]

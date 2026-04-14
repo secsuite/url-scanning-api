@@ -5,8 +5,8 @@ Malicious script detection — LongFormer-based classifier.
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
+from typing import Any
 
 from app.schemas import ScriptMLResult
 
@@ -20,9 +20,9 @@ class ScriptDetector:
 
     def __init__(self, model_path: str) -> None:
         self.model_path = model_path
-        self.model = None
-        self.tokenizer = None
-        self.device = None
+        self.model: Any | None = None
+        self.tokenizer: Any | None = None
+        self.device: Any | None = None
         self._load_model()
 
     def _load_model(self) -> None:
@@ -36,12 +36,12 @@ class ScriptDetector:
             return
 
         try:
-            from transformers import LongformerTokenizerFast, LongformerForSequenceClassification
             import torch
+            from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            self.tokenizer = LongformerTokenizerFast.from_pretrained(str(path))
-            self.model = LongformerForSequenceClassification.from_pretrained(str(path))
+            self.tokenizer = AutoTokenizer.from_pretrained(str(path))
+            self.model = AutoModelForSequenceClassification.from_pretrained(str(path))
             self.model.to(self.device)
             self.model.eval()
             logger.info("LongFormer script detector loaded from %s onto %s", path, self.device)
@@ -53,9 +53,7 @@ class ScriptDetector:
         Run malicious script detection on *script_content*.
         """
         if self.model is None or self.tokenizer is None:
-            return ScriptMLResult(
-                error="Model not loaded"
-            )
+            return ScriptMLResult(error="Model not loaded")
 
         try:
             import torch

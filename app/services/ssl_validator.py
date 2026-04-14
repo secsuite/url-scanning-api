@@ -9,10 +9,11 @@ import logging
 import socket
 import ssl
 from datetime import datetime, timezone
+from typing import cast
 from urllib.parse import urlparse
 
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric import rsa, ec, dsa, ed25519, ed448
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed448, ed25519, rsa
 from cryptography.x509.oid import ExtensionOID
 
 from app.schemas import SSLResult
@@ -37,7 +38,7 @@ def _get_key_info(public_key) -> tuple[str, int | None]:
         return "EC", public_key.key_size
     elif isinstance(public_key, dsa.DSAPublicKey):
         return "DSA", public_key.key_size
-    elif isinstance(public_key, (ed25519.Ed25519PublicKey, ed448.Ed448PublicKey)):
+    elif isinstance(public_key, ed25519.Ed25519PublicKey | ed448.Ed448PublicKey):
         return "EdDSA", None
     return "Unknown", None
 
@@ -92,10 +93,9 @@ def _validate_ssl_sync(url: str) -> SSLResult:
         san_list: list[str] = []
         san_matches = False
         try:
-            san_ext = cert.extensions.get_extension_for_oid(
-                ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-            )
-            san_list = san_ext.value.get_values_for_type(x509.DNSName)
+            san_ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+            san_value = cast(x509.SubjectAlternativeName, san_ext.value)
+            san_list = san_value.get_values_for_type(x509.DNSName)
             san_matches = any(_san_matches_host(san, host) for san in san_list)
         except x509.ExtensionNotFound:
             pass
@@ -119,7 +119,7 @@ def _validate_ssl_sync(url: str) -> SSLResult:
             is_self_signed=is_self_signed,
         )
 
-    except socket.timeout:
+    except TimeoutError:
         return SSLResult(error="Connection timed out")
     except socket.gaierror as exc:
         return SSLResult(error=f"DNS resolution failed: {exc}")

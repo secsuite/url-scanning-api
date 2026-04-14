@@ -4,9 +4,9 @@ Headless browser screenshot capture via Playwright.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
-import asyncio
 from pathlib import Path
 
 from app.config import settings
@@ -18,14 +18,15 @@ logger = logging.getLogger(__name__)
 def _capture_screenshot_sync(url: str, timeout: float, dest_dir: str) -> ScreenshotResult:
     """Synchronous implementation of screenshot capture to be run in a separate thread."""
     import sys
-    
+
     # Force ProactorEventLoop in the new thread on Windows for Playwright subprocess compatibility
     if sys.platform == "win32":
         import asyncio
+
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-        
+
     from playwright.sync_api import sync_playwright
-    
+
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -39,7 +40,7 @@ def _capture_screenshot_sync(url: str, timeout: float, dest_dir: str) -> Screens
                 ),
             )
             page = context.new_page()
-            
+
             page.goto(
                 url,
                 wait_until="load",
@@ -56,17 +57,15 @@ def _capture_screenshot_sync(url: str, timeout: float, dest_dir: str) -> Screens
             filename = f"{uuid.uuid4().hex}.png"
             filepath = Path(dest_dir) / filename
             page.screenshot(path=str(filepath), full_page=False)
-            
+
             context.close()
             browser.close()
-            
+
             logger.info("Screenshot saved: %s", filepath)
             return ScreenshotResult(
-                success=True, 
-                file_path=str(filepath),
-                url=f"/screenshots/{filename}"
+                success=True, file_path=str(filepath), url=f"/screenshots/{filename}"
             )
-            
+
     except Exception as exc:
         logger.exception("Screenshot capture failed for %s", url)
         return ScreenshotResult(error=str(exc))
@@ -92,8 +91,11 @@ async def capture_screenshot(url: str, *, max_attempts: int = 3) -> ScreenshotRe
         if attempt < max_attempts:
             logger.warning(
                 "Screenshot attempt %d/%d failed for %s: %s — retrying",
-                attempt, max_attempts, url, result.error,
+                attempt,
+                max_attempts,
+                url,
+                result.error,
             )
             await asyncio.sleep(1)
     logger.error("All %d screenshot attempts failed for %s", max_attempts, url)
-    return last_result
+    return last_result or ScreenshotResult(error="Screenshot failed without details")

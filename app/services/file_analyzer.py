@@ -18,14 +18,19 @@ import httpx
 
 from app.config import settings
 from app.dependencies import get_http_client
-from app.schemas import FileAnalysisResult, MalwareMLResult, ScriptMLResult
 from app.ml.registry import get_malware_detector, get_script_detector
+from app.schemas import FileAnalysisResult, MalwareMLResult, ScriptMLResult
 
 logger = logging.getLogger(__name__)
 
 # Extensions that trigger a download + ML analysis
 EXECUTABLE_EXTENSIONS = {
-    ".exe", ".dll", ".scr", ".sys", ".com", ".ps1",
+    ".exe",
+    ".dll",
+    ".scr",
+    ".sys",
+    ".com",
+    ".ps1",
 }
 
 SCRIPT_EXTENSIONS = {
@@ -66,7 +71,7 @@ def _determine_file_extension(file_bytes: bytes, url: str, content_type: str) ->
         if path_suffix in {".jar", ".zip", ".docx", ".xlsx"}:
             return path_suffix
         return ".zip"
-        
+
     # 2. Content-Type header
     content_type_map = {
         "application/vnd.microsoft.portable-executable": ".exe",
@@ -81,16 +86,19 @@ def _determine_file_extension(file_bytes: bytes, url: str, content_type: str) ->
     }
     if content_type in content_type_map:
         return content_type_map[content_type]
-        
+
     # 3. Fallback to URL suffix
     path = urlparse(url).path
     suffix = Path(path).suffix.lower()
-    
+
     # 4. Powershell heuristic (often text with specific keywords)
     if not suffix or suffix == ".txt":
         try:
-            head = file_bytes[:2048].decode('utf-8', errors='ignore')
-            if any(kw in head for kw in ("Invoke-", "Write-Host", "New-Object", "$PSVersionTable", "powershell")):
+            head = file_bytes[:2048].decode("utf-8", errors="ignore")
+            if any(
+                kw in head
+                for kw in ("Invoke-", "Write-Host", "New-Object", "$PSVersionTable", "powershell")
+            ):
                 return ".ps1"
         except Exception:
             pass
@@ -108,7 +116,7 @@ async def analyze_file(url: str) -> FileAnalysisResult:
         head_resp = await client.head(url)
         content_type = (head_resp.headers.get("content-type", "")).split(";")[0].strip().lower()
         content_length = head_resp.headers.get("content-length")
-        
+
         url_path = urlparse(url).path
         url_ext = Path(url_path).suffix.lower()
 
@@ -117,9 +125,8 @@ async def analyze_file(url: str) -> FileAnalysisResult:
 
         # Decide whether to download
         should_download = (
-            (url_ext and url_ext in EXECUTABLE_EXTENSIONS)
-            or content_type in EXECUTABLE_CONTENT_TYPES
-        )
+            url_ext and url_ext in EXECUTABLE_EXTENSIONS
+        ) or content_type in EXECUTABLE_CONTENT_TYPES
 
         if not should_download:
             return result
@@ -159,10 +166,14 @@ async def analyze_file(url: str) -> FileAnalysisResult:
             if is_pe:
                 # Binary malware detection (PE files)
                 detector = get_malware_detector()
+                if detector is None:
+                    raise RuntimeError("Binary malware detector not loaded")
                 result.malware_detection = detector.predict(str(tmp_path))
             elif is_script:
                 # Script detection (PowerShell)
                 script_det = get_script_detector()
+                if script_det is None:
+                    raise RuntimeError("Script detector not loaded")
                 script_content = file_bytes.decode("utf-8", errors="replace")
                 result.script_detection = script_det.predict(script_content)
             else:

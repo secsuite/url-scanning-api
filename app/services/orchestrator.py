@@ -11,25 +11,24 @@ from urllib.parse import urlparse
 
 import httpx
 
-from app.config import settings
 from app.dependencies import get_http_client
+from app.ml.registry import get_phishing_detector
 from app.schemas import (
-    ScanResponse,
-    SafeBrowsingResult,
-    VirusTotalResult,
-    ReputationResult,
-    SSLResult,
-    ScreenshotResult,
     FileAnalysisResult,
     PhishingMLResult,
+    ReputationResult,
+    SafeBrowsingResult,
+    ScanResponse,
+    ScreenshotResult,
+    SSLResult,
+    VirusTotalResult,
 )
-from app.services.safe_browsing import check_safe_browsing
-from app.services.virustotal import check_virustotal
-from app.services.reputation import check_reputation
-from app.services.ssl_validator import validate_ssl
-from app.services.screenshot import capture_screenshot
 from app.services.file_analyzer import analyze_file
-from app.ml.registry import get_phishing_detector
+from app.services.reputation import check_reputation
+from app.services.safe_browsing import check_safe_browsing
+from app.services.screenshot import capture_screenshot
+from app.services.ssl_validator import validate_ssl
+from app.services.virustotal import check_virustotal
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +38,7 @@ def _extract_domain(url: str) -> str:
     return parsed.hostname or parsed.path
 
 
-async def _resolve_redirects(
-    url: str, client: httpx.AsyncClient
-) -> tuple[str, list[str]]:
+async def _resolve_redirects(url: str, client: httpx.AsyncClient) -> tuple[str, list[str]]:
     """
     Follow the redirect chain for *url* and return (final_url, chain).
 
@@ -61,9 +58,7 @@ async def _resolve_redirects(
 
         chain = [str(r.url) for r in response.history] + [str(response.url)]
         final_url = str(response.url)
-        logger.info(
-            "Redirect chain for %s: %d hop(s) → %s", url, len(response.history), final_url
-        )
+        logger.info("Redirect chain for %s: %d hop(s) → %s", url, len(response.history), final_url)
         return final_url, chain
     except Exception as exc:
         logger.warning("Redirect resolution failed for %s: %s", url, exc)
@@ -187,7 +182,12 @@ async def analyze_url(url: str) -> ScanResponse:
 
     sb_result, vt_result, rep_result, ssl_result, screenshot_result, file_result = (
         await asyncio.gather(
-            sb_task, vt_task, rep_task, ssl_task, screenshot_task, file_task,
+            sb_task,
+            vt_task,
+            rep_task,
+            ssl_task,
+            screenshot_task,
+            file_task,
             return_exceptions=False,
         )
     )
@@ -210,6 +210,8 @@ async def analyze_url(url: str) -> ScanResponse:
     if screenshot_result.success and screenshot_result.file_path:
         try:
             detector = get_phishing_detector()
+            if detector is None:
+                raise RuntimeError("Phishing detector not loaded")
             phishing_result = await asyncio.to_thread(
                 detector.predict, screenshot_result.file_path, domain
             )
