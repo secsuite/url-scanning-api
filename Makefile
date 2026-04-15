@@ -13,7 +13,7 @@ install-dev:
 	python3 -m venv $(VENV)
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install -e ".[dev]"
-	$(PRE_COMMIT) install --hook-type pre-push
+	$(PRE_COMMIT) install --hook-type pre-commit --hook-type pre-push
 
 quality:
 	$(BLACK) --check app tests

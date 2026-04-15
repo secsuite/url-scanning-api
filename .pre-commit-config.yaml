@@ -1,39 +1,11 @@
 default_stages: [pre-push]
 
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
-    hooks:
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-      - id: check-merge-conflict
-
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
-    hooks:
-      - id: black
-        args: ["--config=pyproject.toml"]
-        files: ^(app|tests)/.*\.py$
-        exclude: ^app/ml/models/
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.8
-    hooks:
-      - id: ruff
-        args: ["--fix", "--config=pyproject.toml"]
-        files: ^(app|tests)/.*\.py$
-        exclude: ^app/ml/models/
-
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: .venv/bin/mypy app tests
+      - id: quality-gates
+        name: quality-gates
+        entry: make quality
         language: system
         pass_filenames: false
-
-      - id: pytest
-        name: pytest
-        entry: .venv/bin/pytest -q --maxfail=1
-        language: system
-        pass_filenames: false
+        stages: [pre-push]
