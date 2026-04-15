@@ -281,15 +281,8 @@ gcloud run services describe "$STAGING_SERVICE_NAME" --region="$GCP_REGION" --fo
 gcloud run services describe "$SERVICE_NAME" --region="$GCP_REGION" --format='value(status.url)'
 ```
 
-Make public:
-
-```bash
-set -a; source .env; set +a
-gcloud run services add-iam-policy-binding "$SERVICE_NAME" \
-  --region="$GCP_REGION" \
-  --member="allUsers" \
-  --role="roles/run.invoker"
-```
+Public access for both staging and production is now configured automatically in
+the GitHub Actions deploy workflow.
 
 Smoke endpoints:
 

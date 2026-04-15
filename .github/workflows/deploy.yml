@@ -150,6 +150,16 @@ jobs:
           MAX_INSTANCES="${{ github.event.inputs.max_instances || '3' }}" \
           ./deploy/cloudbuild-deploy.sh
 
+      - name: Make staging service public
+        run: |
+          set -euo pipefail
+          STAGING_SERVICE="${STAGING_SERVICE_NAME:-${GCP_PROJECT_ID}-staging}"
+          gcloud run services add-iam-policy-binding "${STAGING_SERVICE}" \
+            --region="${GCP_REGION:-europe-west1}" \
+            --member="allUsers" \
+            --role="roles/run.invoker" \
+            --quiet
+
       - name: Smoke test staging
         run: |
           set -euo pipefail
@@ -212,6 +222,16 @@ jobs:
           MODEL_ARTIFACTS_URI="${{ steps.model.outputs.model_uri }}" \
           MAX_INSTANCES="${{ github.event.inputs.max_instances || '3' }}" \
           ./deploy/cloudbuild-deploy.sh
+
+      - name: Make production service public
+        run: |
+          set -euo pipefail
+          PROD_SERVICE="${SERVICE_NAME:-${GCP_PROJECT_ID}}"
+          gcloud run services add-iam-policy-binding "${PROD_SERVICE}" \
+            --region="${GCP_REGION:-europe-west1}" \
+            --member="allUsers" \
+            --role="roles/run.invoker" \
+            --quiet
 
       - name: Smoke test production
         run: |
