@@ -1,9 +1,8 @@
 """
 Central ML model registry.
 
-All three detectors are initialized here as module-level singletons and
-pre-loaded once at application startup via ``preload_all()``.  Service modules
-import the accessors from here instead of managing their own lazy-init globals.
+All three detectors are initialized here as process-level singletons and
+loaded lazily on first use (or preloaded during startup when enabled).
 """
 
 from __future__ import annotations
@@ -11,11 +10,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from app.config import settings
-from app.ml.binary_malware import BinaryMalwareDetector
-from app.ml.phishing_detector import PhishingDetector
-from app.ml.script_detector import ScriptDetector
+
+if TYPE_CHECKING:
+    from app.ml.binary_malware import BinaryMalwareDetector
+    from app.ml.phishing_detector import PhishingDetector
+    from app.ml.script_detector import ScriptDetector
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +52,15 @@ def get_script_detector() -> ScriptDetector | None:
 
 def _load_phishing() -> None:
     global _phishing_detector
+    from app.ml.phishing_detector import PhishingDetector
+
     _phishing_detector = PhishingDetector(models_dir=settings.MODELS_DIR)
 
 
 def _load_malware() -> None:
     global _malware_detector
+    from app.ml.binary_malware import BinaryMalwareDetector
+
     _malware_detector = BinaryMalwareDetector(
         model_path=str(Path(settings.MODELS_DIR) / "malicious_binary_detection" / "PE_detector.lgb")
     )
@@ -62,6 +68,8 @@ def _load_malware() -> None:
 
 def _load_script() -> None:
     global _script_detector
+    from app.ml.script_detector import ScriptDetector
+
     _script_detector = ScriptDetector(
         model_path=str(Path(settings.MODELS_DIR) / "malicious_script_detection" / "saved_model")
     )

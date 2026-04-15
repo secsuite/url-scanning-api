@@ -10,6 +10,8 @@ from pathlib import Path
 
 from app.schemas import PhishingMLResult
 
+logger = logging.getLogger(__name__)
+
 # Ensure pipeline script can be imported
 _PHISHING_DETECTION_DIR = Path(__file__).parent / "models" / "phishing_detection"
 if str(_PHISHING_DETECTION_DIR) not in sys.path:
@@ -17,10 +19,9 @@ if str(_PHISHING_DETECTION_DIR) not in sys.path:
 
 try:
     from pipeline import PhishingDetector as UserPhishingDetector
-except ImportError:
+except Exception as exc:
+    logger.warning("Phishing pipeline import failed at startup: %s", exc)
     UserPhishingDetector = None
-
-logger = logging.getLogger(__name__)
 
 
 class PhishingDetector:
