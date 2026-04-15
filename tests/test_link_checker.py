@@ -27,6 +27,7 @@ Notes on real-world behaviour that affect what we assert:
 
 from __future__ import annotations
 
+import os
 import time
 
 import pytest
@@ -46,7 +47,7 @@ REDIRECT_URL = "https://httpbin.org/redirect/3"
 MALFORMED_INPUT = "not-a-url"
 
 # SLA requirement from the acceptance table.
-RESPONSE_TIME_SLA_SECONDS = 8.0
+RESPONSE_TIME_SLA_SECONDS = float(os.getenv("RESPONSE_TIME_SLA_SECONDS", "8.0"))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
