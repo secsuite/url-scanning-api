@@ -9,7 +9,7 @@ import logging
 import socket
 import ssl
 from datetime import datetime, timezone
-from typing import cast
+from typing import Any, cast
 from urllib.parse import urlparse
 
 from cryptography import x509
@@ -30,7 +30,7 @@ def _extract_host_port(url: str) -> tuple[str, int]:
     return host, port
 
 
-def _get_key_info(public_key) -> tuple[str, int | None]:
+def _get_key_info(public_key: Any) -> tuple[str, int | None]:
     """Return (key_type, key_size) for the certificate's public key."""
     if isinstance(public_key, rsa.RSAPublicKey):
         return "RSA", public_key.key_size

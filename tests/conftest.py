@@ -16,11 +16,13 @@ Individual tests are skipped automatically when their prerequisite is absent.
 from __future__ import annotations
 
 import os
+import socket
 from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from playwright.sync_api import sync_playwright
 
 # Load .env from the project root (api/) before any env-var checks or app imports.
 # This mirrors what pydantic-settings does at runtime, so API keys and paths
@@ -41,6 +43,41 @@ def pytest_configure(config):
         "markers",
         "requires_virustotal_key: skip if VIRUSTOTAL_API_KEY is not set",
     )
+
+
+# ── Environment readiness probes ──────────────────────────────────────────────
+
+
+def _has_basic_dns() -> bool:
+    """Return True when the process can resolve public hostnames."""
+    try:
+        socket.getaddrinfo("www.google.com", 443)
+        return True
+    except OSError:
+        return False
+
+
+def _has_playwright_chromium() -> bool:
+    """Return True when Playwright Chromium browser binary is installed."""
+    try:
+        with sync_playwright() as p:
+            executable = Path(p.chromium.executable_path)
+            return executable.exists()
+    except Exception:
+        return False
+
+
+@pytest.fixture(scope="session")
+def _integration_readiness():
+    """
+    Probe prerequisites that live integration tests depend on.
+    """
+    reasons: list[str] = []
+    if not _has_basic_dns():
+        reasons.append("outbound DNS/network is unavailable")
+    if not _has_playwright_chromium():
+        reasons.append("Playwright Chromium is not installed")
+    return reasons
 
 
 # ── Session-scoped live client ────────────────────────────────────────────────
@@ -84,3 +121,15 @@ def _skip_if_missing_virustotal_key(request):
     if request.node.get_closest_marker("requires_virustotal_key"):
         if not os.getenv("VIRUSTOTAL_API_KEY"):
             pytest.skip("VIRUSTOTAL_API_KEY not set")
+
+
+@pytest.fixture(autouse=True)
+def _skip_if_integration_prereqs_missing(request, _integration_readiness):
+    """
+    Auto-skip live external-service tests when this runtime cannot support them.
+    """
+    if request.node.get_closest_marker(
+        "requires_safe_browsing_key"
+    ) or request.node.get_closest_marker("requires_virustotal_key"):
+        if _integration_readiness:
+            pytest.skip("; ".join(_integration_readiness))

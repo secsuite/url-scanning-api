@@ -9,18 +9,12 @@ import csv
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 import dns.resolver
 import tldextract
 import whois
-
-_tld_extract = tldextract.TLDExtract(suffix_list_urls=())
-
-_resolver = dns.resolver.Resolver(configure=False)
-_resolver.nameservers = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
-_resolver.timeout = 3.0
-_resolver.lifetime = 6.0
 
 from app.config import settings
 from app.schemas import (
@@ -28,6 +22,13 @@ from app.schemas import (
     ReputationResult,
     WHOISInfo,
 )
+
+_tld_extract = tldextract.TLDExtract(suffix_list_urls=())
+
+_resolver = dns.resolver.Resolver(configure=False)
+_resolver.nameservers = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
+_resolver.timeout = 3.0
+_resolver.lifetime = 6.0
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +71,12 @@ def _extract_domain(url: str) -> str:
 def _check_whois(domain: str) -> WHOISInfo:
     try:
         w = whois.whois(domain)
-        creation = w.creation_date
+        # python-whois returns a dict-like structure in stubs; use key access
+        # so static type checkers and IDE analyzers agree with runtime behavior.
+        creation = w.get("creation_date")
         if isinstance(creation, list):
             creation = creation[0]
-        expiration = w.expiration_date
+        expiration = w.get("expiration_date")
         if isinstance(expiration, list):
             expiration = expiration[0]
 
@@ -84,16 +87,17 @@ def _check_whois(domain: str) -> WHOISInfo:
             else:
                 age_days = None
 
-        domain_name = w.domain_name
+        domain_name = w.get("domain_name")
         if isinstance(domain_name, list):
             domain_name = domain_name[0]
+        registrar: Any = w.get("registrar")
 
         return WHOISInfo(
             domain_name=str(domain_name) if domain_name else None,
             creation_date=creation,
             expiration_date=expiration,
             domain_age_days=age_days,
-            registrar=w.registrar,
+            registrar=str(registrar) if registrar else None,
         )
     except Exception as exc:
         logger.warning("WHOIS lookup failed for %s: %s", domain, exc)
@@ -101,6 +105,7 @@ def _check_whois(domain: str) -> WHOISInfo:
 
 
 # ── DNS ───────────────────────────────────────────────────────────────────────
+
 
 def _candidate_domains(domain: str) -> list[str]:
     """Return the domain plus its registered (eTLD+1) form for email-auth lookups."""
@@ -113,7 +118,7 @@ def _candidate_domains(domain: str) -> list[str]:
     return candidates
 
 
-def _join_txt(rdata) -> str:
+def _join_txt(rdata: Any) -> str:
     """TXT records can be split into multiple quoted strings — join them."""
     return "".join(s.decode("utf-8", "replace") for s in rdata.strings)
 

@@ -188,6 +188,13 @@ Create these repository variables:
 - `GCP_WORKLOAD_IDENTITY_PROVIDER`: `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider`
 - `GCP_SERVICE_ACCOUNT`: `<GHA_SA_NAME>@<GCP_PROJECT_ID>.iam.gserviceaccount.com`
 
+Set integration test secrets from local `.env`:
+
+```bash
+gh secret set GOOGLE_SAFE_BROWSING_API_KEY --repo secsuite/url-scanning-api --body "$(grep '^GOOGLE_SAFE_BROWSING_API_KEY=' .env | cut -d= -f2- | tr -d '\r')"
+gh secret set VIRUSTOTAL_API_KEY --repo secsuite/url-scanning-api --body "$(grep '^VIRUSTOTAL_API_KEY=' .env | cut -d= -f2- | tr -d '\r')"
+```
+
 Set the two auth-critical variables from CLI using `.env` values:
 
 ```bash

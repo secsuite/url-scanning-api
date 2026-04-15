@@ -43,9 +43,24 @@ steps:
         test -f app/ml/models/phishing_detection/checkpoints/siamese_best.pth
 
   - name: "gcr.io/cloud-builders/docker"
+    id: "Warm Docker cache"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        set -euo pipefail
+        docker pull "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:latest" || true
+
+  - name: "gcr.io/cloud-builders/docker"
     id: "Build image"
+    env:
+      - "DOCKER_BUILDKIT=1"
     args:
       - "build"
+      - "--build-arg"
+      - "BUILDKIT_INLINE_CACHE=1"
+      - "--cache-from"
+      - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:latest"
       - "-t"
       - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_IMAGE_NAME}:$BUILD_ID"
       - "-t"

@@ -1,6 +1,8 @@
 name: Deploy
 
 on:
+  pull_request:
+    branches: ["master"]
   push:
     branches: ["master"]
   workflow_dispatch:
@@ -35,6 +37,9 @@ jobs:
   quality:
     name: Quality Gates
     runs-on: ubuntu-latest
+    env:
+      GOOGLE_SAFE_BROWSING_API_KEY: ${{ secrets.GOOGLE_SAFE_BROWSING_API_KEY }}
+      VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,10 +58,41 @@ jobs:
           . .venv/bin/activate
           python -m pip install -e ".[dev]"
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Validate integration test secrets
+        run: |
+          set -euo pipefail
+          test -n "${GOOGLE_SAFE_BROWSING_API_KEY}" || (echo "GOOGLE_SAFE_BROWSING_API_KEY is required for integration tests" && exit 1)
+          test -n "${VIRUSTOTAL_API_KEY}" || (echo "VIRUSTOTAL_API_KEY is required for integration tests" && exit 1)
+
+      - name: Install Playwright Chromium
+        run: |
+          . .venv/bin/activate
+          playwright install chromium
+
       - name: Run quality gates
         run: |
           . .venv/bin/activate
           make quality
+
+      - name: Run integration tests (must not skip)
+        env:
+          RESPONSE_TIME_SLA_SECONDS: "10.0"
+        run: |
+          set -euo pipefail
+          . .venv/bin/activate
+          pytest -q -m "requires_safe_browsing_key and requires_virustotal_key" --maxfail=1 -rs | tee /tmp/integration-tests.log
+          if grep -Eq "[0-9]+ skipped" /tmp/integration-tests.log; then
+            echo "Integration tests were skipped; failing the build."
+            exit 1
+          fi
 
   deploy-staging:
     name: Deploy Staging

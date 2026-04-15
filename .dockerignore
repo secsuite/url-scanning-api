@@ -23,3 +23,7 @@ docs/
 
 downloads/
 screenshots/
+.mypy_cache/
+*.sqlite
+*.log
+**/__pycache__/
