@@ -2,6 +2,11 @@
 
 A FastAPI-based REST API that performs multi-stage URL analysis for malicious content detection.
 
+## Documentation
+
+- Deployment and CI/CD guide: [DEPLOY.md](./DEPLOY.md)
+- Contribution workflow: [CONTRIBUTION.md](./CONTRIBUTION.md)
+
 ## Features
 
 | Stage | What It Does |

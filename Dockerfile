@@ -1,8 +1,9 @@
+# syntax=docker/dockerfile:1.7
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     SCREENSHOT_DIR=/tmp/screenshots \
     DOWNLOAD_DIR=/tmp/downloads
@@ -10,7 +11,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # OS libraries required by Playwright Chromium and common ML/runtime deps.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     wget \
@@ -46,16 +49,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./requirements.txt
-COPY app/ml/models/phishing_detection/requirements.txt ./app/ml/models/phishing_detection/requirements.txt
-COPY app/ml/models/malicious_script_detection/requirements.txt ./app/ml/models/malicious_script_detection/requirements.txt
 
-RUN pip install --upgrade pip setuptools wheel \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip setuptools wheel \
     && pip install -r requirements.txt \
-    && pip install -r app/ml/models/phishing_detection/requirements.txt \
-    && pip install -r app/ml/models/malicious_script_detection/requirements.txt \
     && python -m playwright install chromium
 
-COPY . .
+# Keep heavyweight model artifacts in a dedicated layer so regular app code
+# changes do not force re-copying/re-layering ~1GB of model files.
+COPY app/ml/models ./app/ml/models
+
+# Copy the rest of the application without model artifacts.
+COPY app/__init__.py app/config.py app/dependencies.py app/main.py app/schemas.py ./app/
+COPY app/routers ./app/routers
+COPY app/services ./app/services
+COPY app/ml/__init__.py app/ml/binary_malware.py app/ml/phishing_detector.py app/ml/registry.py app/ml/script_detector.py ./app/ml/
+COPY tranco_top1m.csv ./tranco_top1m.csv
 
 EXPOSE 8080
 

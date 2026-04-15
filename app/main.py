@@ -5,6 +5,7 @@ FastAPI application entry-point.
 import asyncio
 import logging
 import sys
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup / shutdown lifecycle."""
     settings.ensure_directories()
     if settings.PRELOAD_MODELS_ON_STARTUP:
@@ -64,7 +65,7 @@ app.include_router(scan.router)
 
 
 @app.get("/health", tags=["System"])
-async def health():
+async def health() -> dict[str, str]:
     """Liveness / readiness check."""
     return {
         "status": "healthy",
