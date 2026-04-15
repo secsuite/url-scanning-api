@@ -59,7 +59,6 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Cache Playwright browsers
-        if: env.GOOGLE_SAFE_BROWSING_API_KEY != '' && env.VIRUSTOTAL_API_KEY != ''
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
@@ -67,8 +66,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-playwright-
 
-      - name: Install Playwright Chromium (integration mode)
-        if: env.GOOGLE_SAFE_BROWSING_API_KEY != '' && env.VIRUSTOTAL_API_KEY != ''
+      - name: Validate integration test secrets
+        run: |
+          set -euo pipefail
+          test -n "${GOOGLE_SAFE_BROWSING_API_KEY}" || (echo "GOOGLE_SAFE_BROWSING_API_KEY is required for integration tests" && exit 1)
+          test -n "${VIRUSTOTAL_API_KEY}" || (echo "VIRUSTOTAL_API_KEY is required for integration tests" && exit 1)
+
+      - name: Install Playwright Chromium
         run: |
           . .venv/bin/activate
           playwright install chromium
@@ -77,6 +81,16 @@ jobs:
         run: |
           . .venv/bin/activate
           make quality
+
+      - name: Run integration tests (must not skip)
+        run: |
+          set -euo pipefail
+          . .venv/bin/activate
+          pytest -q -m "requires_safe_browsing_key and requires_virustotal_key" --maxfail=1 -rs | tee /tmp/integration-tests.log
+          if grep -Eq "[0-9]+ skipped" /tmp/integration-tests.log; then
+            echo "Integration tests were skipped; failing the build."
+            exit 1
+          fi
 
   deploy-staging:
     name: Deploy Staging
