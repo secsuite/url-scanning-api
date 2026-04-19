@@ -80,12 +80,16 @@ class PhishingDetector:
                 # Surface domain-vs-logo analysis from the first phishing detection,
                 # or from the highest-confidence detection if nothing is phishing.
                 phishing_dets = [d for d in detections if d.get("is_phishing")]
-                source_det = phishing_dets[0] if phishing_dets else detections[0]
+                source_det = (
+                    phishing_dets[0]
+                    if phishing_dets
+                    else max(detections, key=lambda d: d.get("best_match_similarity", 0.0))
+                )
                 domain_info = source_det.get("domain_info") or {}
                 match_type = domain_info.get("match_type")
                 domain_match_reason = domain_info.get("reason")
 
-                if matched_brand is None:
+                if is_phishing and matched_brand is None:
                     matched_brand = source_det.get("best_match_brand")
 
             return PhishingMLResult(
