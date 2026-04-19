@@ -81,6 +81,8 @@ jobs:
           gcloud storage ls "${DEST}/malicious_script_detection/saved_model/model.safetensors" >/dev/null
           gcloud storage ls "${DEST}/phishing_detection/checkpoints/frcnn_best.pth" >/dev/null
           gcloud storage ls "${DEST}/phishing_detection/checkpoints/siamese_best.pth" >/dev/null
+          gcloud storage ls "${DEST}/phishing_detection/data/reference_logos/google.png" >/dev/null
+          gcloud storage ls "${DEST}/phishing_detection/data/reference_logos/paypal.png" >/dev/null
 
       - name: Write model manifest
         run: |
