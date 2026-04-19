@@ -34,13 +34,31 @@ steps:
           exit 1
         fi
         echo "Downloading model artifacts from ${_MODEL_ARTIFACTS_URI}..."
-        mkdir -p app/ml/models
-        gsutil -m rsync -r "${_MODEL_ARTIFACTS_URI}" app/ml/models
+        # Sync only runtime artifact folders (weights/data) so Python source
+        # under app/ml/models from the repo is never overwritten by GCS.
+        mkdir -p app/ml/models/malicious_binary_detection
+        mkdir -p app/ml/models/malicious_script_detection
+        mkdir -p app/ml/models/phishing_detection/checkpoints
+        mkdir -p app/ml/models/phishing_detection/data/reference_logos
+        gsutil -m rsync -r \
+          "${_MODEL_ARTIFACTS_URI}/malicious_binary_detection" \
+          "app/ml/models/malicious_binary_detection"
+        gsutil -m rsync -r \
+          "${_MODEL_ARTIFACTS_URI}/malicious_script_detection" \
+          "app/ml/models/malicious_script_detection"
+        gsutil -m rsync -r \
+          "${_MODEL_ARTIFACTS_URI}/phishing_detection/checkpoints" \
+          "app/ml/models/phishing_detection/checkpoints"
+        gsutil -m rsync -r \
+          "${_MODEL_ARTIFACTS_URI}/phishing_detection/data/reference_logos" \
+          "app/ml/models/phishing_detection/data/reference_logos"
         echo "Validating required model files..."
         test -f app/ml/models/malicious_binary_detection/PE_detector.lgb
         test -f app/ml/models/malicious_script_detection/saved_model/model.safetensors
         test -f app/ml/models/phishing_detection/checkpoints/frcnn_best.pth
         test -f app/ml/models/phishing_detection/checkpoints/siamese_best.pth
+        test -f app/ml/models/phishing_detection/data/reference_logos/google.png
+        test -f app/ml/models/phishing_detection/data/reference_logos/paypal.png
 
   - name: "gcr.io/cloud-builders/docker"
     id: "Warm Docker cache"

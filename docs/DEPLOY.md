@@ -67,6 +67,15 @@ gcloud storage buckets create "gs://${MODEL_BUCKET}" --location="${GCP_REGION}"
 gcloud storage rsync -r app/ml/models "gs://${MODEL_BUCKET}/${MODEL_ARTIFACTS_PREFIX}/bootstrap"
 ```
 
+Cloud Build only syncs runtime model artifacts from GCS (weights and reference logos):
+
+- `malicious_binary_detection/`
+- `malicious_script_detection/`
+- `phishing_detection/checkpoints/`
+- `phishing_detection/data/reference_logos/`
+
+Python source files under `app/ml/models/` are taken from Git at build time and are not overridden by GCS artifacts.
+
 ### 3. Create secrets
 
 ```bash
