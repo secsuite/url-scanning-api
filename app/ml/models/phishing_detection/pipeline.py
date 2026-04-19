@@ -329,12 +329,15 @@ class PhishingDetector:
                 "domain_info": None,
             }
 
-            # Always check domain against detected brand regardless of similarity score.
-            # A low-confidence match on the wrong domain is still suspicious.
+            # Only perform domain-vs-brand phishing checks when the logo match
+            # is strong enough. Otherwise, low-confidence top-1 matches create
+            # false positives on legitimate pages.
             if best_match:
                 brand = best_match["brand"]
+                best_similarity = best_match["similarity"]
+                is_strong_match = best_similarity >= self.similarity_threshold
 
-                if url:
+                if url and is_strong_match:
                     domain_info = self.check_domain(url, brand)
                     detection_result["domain_info"] = domain_info
 
@@ -343,7 +346,7 @@ class PhishingDetector:
                         results["is_phishing"] = True
                         if brand not in results["phishing_brands"]:
                             results["phishing_brands"].append(brand)
-                else:
+                elif not url:
                     # No URL provided — flag as potential phishing
                     detection_result["is_phishing"] = None  # Unknown without URL
 
