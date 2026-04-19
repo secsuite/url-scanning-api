@@ -20,15 +20,9 @@ Pillow>=10.2.0
 torch==2.11.0+cpu
 torchvision==0.26.0+cpu
 
-# ── ML Model Extra Dependencies ──
+# ── Runtime ML dependencies used by inference paths ──
 numpy>=1.21.0
 pandas>=2.0.0
 scikit-learn>=1.0.0
-datasets>=2.15.0
-accelerate>=0.25.0
-pycocotools>=2.0.6
-matplotlib>=3.5.0
-tqdm>=4.60.0
-tensorboard>=2.10.0
 pefile>=2023.2.7
 signify>=0.5.2

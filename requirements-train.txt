@@ -1,0 +1,10 @@
+# Install runtime dependencies first, then add training extras.
+-r requirements.txt
+
+# ── Training/evaluation dependencies (not required for API runtime) ──
+datasets>=2.15.0
+accelerate>=0.25.0
+pycocotools>=2.0.6
+matplotlib>=3.5.0
+tqdm>=4.60.0
+tensorboard>=2.10.0

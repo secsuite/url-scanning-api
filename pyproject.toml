@@ -31,17 +31,19 @@ dependencies = [
     "numpy>=1.21.0",
     "pandas>=2.0.0",
     "scikit-learn>=1.0.0",
+    "pefile>=2023.2.7",
+    "signify>=0.5.2",
+]
+
+[project.optional-dependencies]
+train = [
     "datasets>=2.15.0",
     "accelerate>=0.25.0",
     "pycocotools>=2.0.6",
     "matplotlib>=3.5.0",
     "tqdm>=4.60.0",
     "tensorboard>=2.10.0",
-    "pefile>=2023.2.7",
-    "signify>=0.5.2",
 ]
-
-[project.optional-dependencies]
 dev = [
     "black==24.10.0",
     "ruff==0.6.8",
