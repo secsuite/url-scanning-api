@@ -43,6 +43,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     libpangocairo-1.0-0 \
     libpango-1.0-0 \
     libcairo2 \
+    libgomp1 \
     libxext6 \
     libxrender1 \
     fonts-liberation \
